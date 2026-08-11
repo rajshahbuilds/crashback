@@ -92,8 +92,29 @@ tests/            pytest suite (dangerous paths: crashes, labels, joins, splits)
 ```
 
 Bulk data lives in **Parquet** (immutable/versioned); high-volume transforms use
-**Polars/DuckDB**. Durable relational project state (dataset/model/run metadata) will
-live in **Supabase/Postgres** (STU-46).
+**Polars/DuckDB**. Durable relational project state lives in **Supabase/Postgres**.
+
+## Metadata store (Supabase) — what belongs where
+
+**Rule:** Postgres holds *provenance and pointers*; Parquet holds the *bulk data*. Raw daily
+bars and wide feature/training matrices never go into Postgres.
+
+| Lives in **Supabase/Postgres** (small, relational) | Lives in **Parquet** (bulk, on disk) |
+|---|---|
+| dataset / feature / model **versions**, pipeline **runs** | daily price bars, normalized fundamentals |
+| evaluation **metrics**, per-event **predictions** | crash-event tables, wide feature tables |
+| **artifacts** registry (path + sha256 + row_count) | model matrices / serialized models (files) |
+| light **securities_ref** (one row per security) | canonical security master (full history) |
+
+The schema is defined as versioned migrations in [`supabase/migrations/`](./supabase/migrations/)
+and applied to the project (ref `xhnzdcmswdeasindpwga`). Any dataset or model run is
+reconstructible from its row + the referenced `artifacts` row + `git_commit` + `config`.
+
+Tables: `artifacts`, `dataset_versions`, `feature_versions`, `pipeline_runs`, `model_runs`,
+`metrics`, `predictions`, `securities_ref`. RLS is enabled on all with no policies — the
+pipeline writes via the **service role** or a direct Postgres connection (both bypass RLS);
+the public REST API is denied. Provide credentials via env vars (never committed), e.g.
+`SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` or a `DATABASE_URL` connection string.
 
 ## Provider interface
 
