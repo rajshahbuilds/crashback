@@ -68,7 +68,8 @@ class SyntheticProvider(MarketDataProvider):
         # `universe` is ignored: the in-memory fixture is already the intended universe.
         return self._filter_ids(self._security_master, security_ids)
 
-    def get_daily_prices(self, security_ids, start: date, end: date) -> pl.DataFrame:
+    def get_daily_prices(self, security_ids, start: date, end: date, universe=None) -> pl.DataFrame:
+        # `universe` ignored: the in-memory fixture is already the intended universe.
         df = self._filter_ids(self._prices, security_ids)
         return df.filter((pl.col("date") >= start) & (pl.col("date") <= end))
 

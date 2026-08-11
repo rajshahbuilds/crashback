@@ -97,14 +97,24 @@ class WRDSProvider(MarketDataProvider):
     # --- interface ---------------------------------------------------------------
 
     def get_daily_prices(
-        self, security_ids: Sequence[int] | None, start: date, end: date
+        self,
+        security_ids: Sequence[int] | None,
+        start: date,
+        end: date,
+        universe: UniverseFilter | None = None,
     ) -> pl.DataFrame:
+        universe_where = _universe_where(universe)
+        universe_clause = (
+            f" AND permno IN (SELECT permno FROM crsp.stocknames_v2 WHERE 1=1{universe_where})"
+            if universe_where
+            else ""
+        )
         q = (
             "SELECT permno, dlycaldt, dlyopen, dlyhigh, dlylow, dlyclose, dlyret, dlyretx, "
             "dlyvol, dlycumfacpr, dlycumfacshr, shrout "
             "FROM crsp.dsf_v2 "
             f"WHERE dlycaldt BETWEEN '{start.isoformat()}' AND '{end.isoformat()}'"
-            f"{_in_clause('permno', security_ids)} ORDER BY permno, dlycaldt"
+            f"{_in_clause('permno', security_ids)}{universe_clause} ORDER BY permno, dlycaldt"
         )
         return norm.normalize_ciz_prices(self._sql(q, date_cols=["dlycaldt"]))
 

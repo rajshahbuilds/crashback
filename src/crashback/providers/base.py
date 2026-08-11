@@ -45,8 +45,13 @@ class MarketDataProvider(ABC):
         security_ids: Sequence[int] | None,
         start: date,
         end: date,
+        universe: UniverseFilter | None = None,
     ) -> pl.DataFrame:
-        """Canonical daily prices in [start, end] inclusive (schema: daily_price)."""
+        """Canonical daily prices in [start, end] inclusive (schema: daily_price).
+
+        ``universe`` optionally restricts to the research universe (same semantics as
+        ``get_security_master``); providers that cannot express it may ignore it.
+        """
 
     @abstractmethod
     def get_fundamentals(
