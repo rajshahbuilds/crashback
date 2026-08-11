@@ -1,0 +1,25 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Credentials — never commit
+.pgpass
+*.pgpass
+.env
+
+# Data artifacts (large / regenerable) — keep out of git
+data/raw/
+data/normalized/
+data/processed/
+data/events/
+*.parquet
+
+# Machine-generated validation JSON is regenerable; keep the human report.
+reports/wrds_validation.json
+
+# OS
+.DS_Store
