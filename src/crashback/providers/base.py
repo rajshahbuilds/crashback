@@ -16,6 +16,8 @@ from datetime import date
 
 import polars as pl
 
+from crashback.providers.universe import UniverseFilter
+
 
 class MarketDataProvider(ABC):
     """Canonical read interface over a market-data source.
@@ -27,9 +29,15 @@ class MarketDataProvider(ABC):
 
     @abstractmethod
     def get_security_master(
-        self, security_ids: Sequence[int] | None = None
+        self,
+        security_ids: Sequence[int] | None = None,
+        universe: UniverseFilter | None = None,
     ) -> pl.DataFrame:
-        """Canonical security master (schema: security_master). Preserves ticker history."""
+        """Canonical security master (schema: security_master). Preserves ticker history.
+
+        ``universe`` optionally restricts to the research universe (e.g. US common stock on
+        major exchanges). Providers that cannot express the filter may ignore it.
+        """
 
     @abstractmethod
     def get_daily_prices(

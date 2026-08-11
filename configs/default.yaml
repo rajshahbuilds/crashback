@@ -20,9 +20,14 @@ labels:
 
 # ---- Research universe (section 4) -----------------------------------------------
 universe:
-  # CRSP common-stock filter: share codes 10/11, exchanges NYSE/AMEX/Nasdaq (1/2/3).
-  share_codes: [10, 11]
-  exchange_codes: [1, 2, 3]
+  # CRSP CIZ common-stock filter (equivalent to legacy shrcd 10/11 on exchcd 1/2/3).
+  share_types: [NS]            # native/common shares (excludes ADRs, units, subscriptions)
+  security_types: [EQTY]       # equity (excludes FUND, DERV)
+  security_subtypes: [COM]     # common (excludes ETF, CEF, warrants/rights)
+  exchanges: [N, A, Q]         # NYSE / AMEX / Nasdaq
+  us_incorporated_only: true   # excludes foreign-incorporated common (~legacy shrcd 12)
+  # REITs (issuertype=REIT) are included: no issuer-type filter is applied, so any
+  # NS/EQTY/COM security is kept regardless of CORP/ACOR/REIT issuer type.
   # Liquidity filters are point-in-time (computed only from pre/at-event data).
   min_price: 5.0
   min_trailing_dollar_volume: null          # null = disabled for now

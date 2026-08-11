@@ -70,14 +70,42 @@ def test_normalize_ciz_security_master_joins_delisting():
             "securityenddt": [date(2008, 9, 18)],
         }
     )
-    delist = pl.DataFrame({"permno": [80599], "dlstcd": [574], "dlret": [-0.6]})
+    delist = pl.DataFrame(
+        {"permno": [80599], "dlstdt": [date(2008, 9, 17)], "dlstcd": [574], "dlret": [-0.6]}
+    )
     out = norm.normalize_ciz_security_master(names, delist)
     assert out.columns == list(SECURITY_MASTER_SCHEMA.keys())
     row = out.row(0, named=True)
     assert row["security_id"] == 80599
     assert row["exchange"] == "NYSE"          # 'N' mapped to a canonical label
+    assert row["delisting_date"] == date(2008, 9, 17)
     assert row["delisting_code"] == 574
     assert row["delisting_return"] == -0.6
+
+
+def test_normalize_ciz_security_master_active_has_null_delisting():
+    # dlstcd 100 = "still trading": must NOT be treated as a delisting.
+    names = pl.DataFrame(
+        {
+            "permno": [14593],
+            "permco": [7],
+            "namedt": [date(1980, 12, 12)],
+            "nameenddt": [date(2025, 12, 31)],
+            "ticker": ["AAPL"],
+            "primaryexch": ["Q"],
+            "securitytype": ["EQTY"],
+            "siccd": [3571],
+            "securitybegdt": [date(1980, 12, 12)],
+            "securityenddt": [date(2025, 12, 31)],
+        }
+    )
+    delist = pl.DataFrame(
+        {"permno": [14593], "dlstdt": [date(2025, 12, 31)], "dlstcd": [100], "dlret": [None]}
+    )
+    row = norm.normalize_ciz_security_master(names, delist).row(0, named=True)
+    assert row["delisting_date"] is None
+    assert row["delisting_code"] is None
+    assert row["listing_date"] == date(1980, 12, 12)
 
 
 def test_normalize_compustat_fundamentals_quarterly_with_link():

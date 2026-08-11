@@ -64,7 +64,8 @@ class SyntheticProvider(MarketDataProvider):
             return df
         return df.filter(pl.col("security_id").is_in(list(security_ids)))
 
-    def get_security_master(self, security_ids=None) -> pl.DataFrame:
+    def get_security_master(self, security_ids=None, universe=None) -> pl.DataFrame:
+        # `universe` is ignored: the in-memory fixture is already the intended universe.
         return self._filter_ids(self._security_master, security_ids)
 
     def get_daily_prices(self, security_ids, start: date, end: date) -> pl.DataFrame:

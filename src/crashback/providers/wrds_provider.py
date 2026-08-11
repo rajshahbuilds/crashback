@@ -15,6 +15,7 @@ import polars as pl
 from crashback.logging_utils import get_logger
 from crashback.providers import normalize as norm
 from crashback.providers.base import MarketDataProvider
+from crashback.providers.universe import UniverseFilter
 
 log = get_logger(__name__)
 
@@ -36,6 +37,28 @@ def _in_clause_gvkey(column: str, ids: Sequence[int | str] | None) -> str:
         return ""
     joined = ",".join(f"'{int(i):06d}'" for i in ids)
     return f" AND {column} IN ({joined})"
+
+
+def _universe_where(u: UniverseFilter | None) -> str:
+    """SQL WHERE fragment mapping a UniverseFilter to CIZ stocknames_v2 columns."""
+    if u is None:
+        return ""
+
+    def q(vals):
+        return ",".join(f"'{v}'" for v in vals)
+
+    parts = []
+    if u.share_types:
+        parts.append(f"sharetype IN ({q(u.share_types)})")
+    if u.security_types:
+        parts.append(f"securitytype IN ({q(u.security_types)})")
+    if u.security_subtypes:
+        parts.append(f"securitysubtype IN ({q(u.security_subtypes)})")
+    if u.exchanges:
+        parts.append(f"primaryexch IN ({q(u.exchanges)})")
+    if u.us_incorporated_only:
+        parts.append("usincflg = 'Y'")
+    return "".join(f" AND {p}" for p in parts)
 
 
 class WRDSProvider(MarketDataProvider):
@@ -86,17 +109,20 @@ class WRDSProvider(MarketDataProvider):
         return norm.normalize_ciz_prices(self._sql(q, date_cols=["dlycaldt"]))
 
     def get_security_master(
-        self, security_ids: Sequence[int] | None = None
+        self,
+        security_ids: Sequence[int] | None = None,
+        universe: UniverseFilter | None = None,
     ) -> pl.DataFrame:
         names = self._sql(
             "SELECT permno, permco, namedt, nameenddt, ticker, primaryexch, securitytype, "
             "siccd, securitybegdt, securityenddt FROM crsp.stocknames_v2 "
-            f"WHERE 1=1{_in_clause('permno', security_ids)}",
+            f"WHERE 1=1{_in_clause('permno', security_ids)}{_universe_where(universe)}",
             date_cols=["namedt", "nameenddt", "securitybegdt", "securityenddt"],
         )
         delist = self._sql(
-            "SELECT permno, dlstcd, dlret FROM crsp.dsedelist "
-            f"WHERE 1=1{_in_clause('permno', security_ids)}"
+            "SELECT permno, dlstdt, dlstcd, dlret FROM crsp.dsedelist "
+            f"WHERE 1=1{_in_clause('permno', security_ids)}",
+            date_cols=["dlstdt"],
         )
         return norm.normalize_ciz_security_master(names, delist)
 

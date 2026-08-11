@@ -15,10 +15,12 @@ from crashback.providers.schemas import (
     validate_schema,
 )
 from crashback.providers.synthetic import SyntheticProvider
+from crashback.providers.universe import UniverseFilter
 
 __all__ = [
     "MarketDataProvider",
     "SyntheticProvider",
+    "UniverseFilter",
     "SCHEMAS",
     "SchemaError",
     "empty_frame",

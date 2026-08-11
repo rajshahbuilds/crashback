@@ -79,8 +79,13 @@ class LabelsConfig(_Base):
 
 
 class UniverseConfig(_Base):
-    share_codes: list[int]
-    exchange_codes: list[int]
+    # CRSP CIZ common-stock filter (see configs/default.yaml). REITs are kept by not
+    # filtering on issuer type; foreign-incorporated common is dropped via us_incorporated_only.
+    share_types: list[str]
+    security_types: list[str]
+    security_subtypes: list[str]
+    exchanges: list[str]
+    us_incorporated_only: bool = True
     min_price: float | None = None
     min_trailing_dollar_volume: float | None = None
 

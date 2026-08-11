@@ -107,12 +107,21 @@ def normalize_ciz_prices(df: pl.DataFrame) -> pl.DataFrame:
     return validate_schema(out, DAILY_PRICE_SCHEMA)
 
 
+# CRSP delisting codes >= 200 are genuine delistings; 100 = "still trading" (active).
+_DELIST_MIN_CODE = 200
+
+
 def normalize_ciz_security_master(
     names: pl.DataFrame, delistings: pl.DataFrame | None = None
 ) -> pl.DataFrame:
     """CRSP CIZ ``stocknames_v2`` (+ optional ``dsedelist``) -> canonical security_master.
 
     Grain is one row per (security_id, ticker period): ticker history is preserved.
+
+    ``delisting_*`` reflect a real delisting event (dsedelist code >= 200) only. An active
+    security has ``dsedelist`` code 100 ("still trading") or no delisting row, so its
+    delisting fields are null — never confused with ``securityenddt`` (the name-record end,
+    which equals the data cutoff for active names).
     """
     out = names.select(
         pl.col("permno").cast(pl.Int64).alias("security_id"),
@@ -124,17 +133,23 @@ def normalize_ciz_security_master(
         pl.col("securitytype").cast(pl.Utf8).alias("security_type"),
         pl.col("siccd").cast(pl.Int64).alias("sic_code"),
         pl.col("securitybegdt").cast(pl.Date).alias("listing_date"),
-        pl.col("securityenddt").cast(pl.Date).alias("delisting_date"),
     )
     if delistings is not None and delistings.height > 0:
         dl = delistings.select(
             pl.col("permno").cast(pl.Int64).alias("security_id"),
-            pl.col("dlstcd").cast(pl.Int64).alias("delisting_code"),
-            pl.col("dlret").cast(pl.Float64).alias("delisting_return"),
+            pl.col("dlstdt").cast(pl.Date).alias("_dlstdt"),
+            pl.col("dlstcd").cast(pl.Int64).alias("_dlstcd"),
+            pl.col("dlret").cast(pl.Float64).alias("_dlret"),
         )
-        out = out.join(dl, on="security_id", how="left")
+        delisted = pl.col("_dlstcd") >= _DELIST_MIN_CODE
+        out = out.join(dl, on="security_id", how="left").with_columns(
+            pl.when(delisted).then(pl.col("_dlstdt")).alias("delisting_date"),
+            pl.when(delisted).then(pl.col("_dlstcd")).alias("delisting_code"),
+            pl.when(delisted).then(pl.col("_dlret")).alias("delisting_return"),
+        ).drop("_dlstdt", "_dlstcd", "_dlret")
     else:
         out = out.with_columns(
+            pl.lit(None, dtype=pl.Date).alias("delisting_date"),
             pl.lit(None, dtype=pl.Int64).alias("delisting_code"),
             pl.lit(None, dtype=pl.Float64).alias("delisting_return"),
         )
