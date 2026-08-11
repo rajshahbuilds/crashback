@@ -7,7 +7,9 @@ name = "crashback"
 version = "0.1.0"
 description = "Short-term stock-price recovery prediction after large crashes (research pipeline)."
 readme = "README.md"
-requires-python = ">=3.12"
+# Upper-bounded: `wrds` pins pandas<2.3, but pandas<2.3 segfaults on Python 3.14
+# (pandas added 3.14 support only in 2.3+). 3.12/3.13 are the supported interpreters.
+requires-python = ">=3.12,<3.14"
 license = { text = "Proprietary" }
 authors = [{ name = "Studio R42" }]
 
@@ -45,6 +47,9 @@ packages = ["src/crashback"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+# Import the package from src/ directly, so the suite does not depend on the state of an
+# editable install (hatchling's editable .pth proved unreliable on this interpreter).
+pythonpath = ["src"]
 
 [tool.ruff]
 line-length = 100

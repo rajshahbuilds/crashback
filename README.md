@@ -10,11 +10,19 @@ V1 is an empirical, calibrated-probability research project (not a trading bot).
 
 ## Local setup
 
-Requires Python **>= 3.12** (developed on 3.14). WRDS access is validated (see
+Requires Python **>= 3.12, < 3.14**. WRDS access is validated (see
 [`reports/STU-43_wrds_validation.md`](./reports/STU-43_wrds_validation.md)).
 
-> **macOS:** LightGBM needs the OpenMP runtime. Install it once with `brew install libomp`
+> **Not Python 3.14:** `wrds` pins `pandas<2.3`, and pandas <2.3 segfaults on 3.14
+> (`pd.to_datetime`). Use 3.12 or 3.13. Create the venv with `python3.12 -m venv .venv`.
+>
+> **macOS — LightGBM:** needs the OpenMP runtime — `brew install libomp` once
 > (otherwise `import lightgbm` fails with a missing `libomp.dylib`).
+>
+> **macOS + editable install:** if `import crashback` fails after `pip install -e .` (the
+> editable `.pth` can get marked hidden, which `site.py` skips), run
+> `chflags nohidden .venv/lib/python3.*/site-packages/_editable_impl_crashback.pth`. The test
+> suite is unaffected — it adds `src/` to the path via `pyproject.toml`'s `pythonpath`.
 
 ```bash
 python3 -m venv .venv
@@ -87,7 +95,22 @@ Bulk data lives in **Parquet** (immutable/versioned); high-volume transforms use
 **Polars/DuckDB**. Durable relational project state (dataset/model/run metadata) will
 live in **Supabase/Postgres** (STU-46).
 
+## Provider interface
+
+Downstream code reads market data through a provider-neutral interface returning canonical
+Polars schemas — never vendor column names (see
+[`reports/STU-45_provider_interfaces.md`](./reports/STU-45_provider_interfaces.md)):
+
+```python
+from datetime import date
+from crashback.providers.wrds_provider import WRDSProvider   # live CRSP CIZ + Compustat
+from crashback.providers import SyntheticProvider            # in-memory, for tests/offline
+
+p = WRDSProvider(username="YOUR_WRDS_USER")
+prices = p.get_daily_prices([14593], date(2008, 9, 1), date(2008, 9, 30))  # canonical daily_price
+```
+
 ## Status
 
-Milestone **M1 — Data Source & Research Foundation**. Done: STU-43 (WRDS validation).
-In progress: STU-44 (this repo skeleton). Next: STU-45 (provider-neutral interfaces).
+Milestone **M1 — Data Source & Research Foundation**. Done: STU-43 (WRDS validation),
+STU-44 (repo skeleton), STU-45 (provider interfaces). Next: STU-47 (security master).
