@@ -139,4 +139,6 @@ skeleton), STU-45 (provider interfaces), STU-46 (Supabase metadata) — done.
 and STU-48 (85.3M-row daily price history, 1925–2025) done — see
 [`reports/STU-47_security_master.md`](./reports/STU-47_security_master.md) and
 [`reports/STU-48_daily_prices.md`](./reports/STU-48_daily_prices.md).
-Next: STU-49 (crash-event detection).
+**M3 — Crash Events & Recovery Labels:** STU-49 (crash-event detection — 1.15M events,
+268k in-universe & liquid) done — see [`reports/STU-49_crash_events.md`](./reports/STU-49_crash_events.md).
+Next: STU-50 (recovery labels & continuous outcomes).
