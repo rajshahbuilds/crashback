@@ -11,11 +11,12 @@ __pycache__/
 *.pgpass
 .env
 
-# Data artifacts (large / regenerable) — keep out of git
-data/raw/
-data/normalized/
-data/processed/
-data/events/
+# Data artifacts (large / regenerable) — keep out of git, but track the empty dirs
+data/raw/*
+data/normalized/*
+data/processed/*
+data/events/*
+!data/**/.gitkeep
 *.parquet
 
 # Machine-generated validation JSON is regenerable; keep the human report.

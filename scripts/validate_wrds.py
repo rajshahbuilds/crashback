@@ -61,11 +61,11 @@ class Validator:
     def check_libraries(self):
         def fn():
             libs = sorted(self.db.list_libraries())
-            crsp = [l for l in libs if "crsp" in l.lower()]
-            comp = [l for l in libs if "comp" in l.lower()]
+            crsp = [lib for lib in libs if "crsp" in lib.lower()]
+            comp = [lib for lib in libs if "comp" in lib.lower()]
             pit = [
-                l for l in libs
-                if any(k in l.lower() for k in ("snapshot", "_pit", "point", "unrestated"))
+                lib for lib in libs
+                if any(k in lib.lower() for k in ("snapshot", "_pit", "point", "unrestated"))
             ]
             return {
                 "n_libraries": len(libs),
@@ -138,8 +138,9 @@ class Validator:
 
 
 def run(username: str | None):
-    import wrds
     from importlib.metadata import version as _pkg_version
+
+    import wrds
 
     wrds_ver = _pkg_version("wrds")
     print(f"wrds version: {wrds_ver}")

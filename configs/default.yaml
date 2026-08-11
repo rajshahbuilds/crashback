@@ -1,0 +1,58 @@
+# Default V1 research configuration.
+# Every methodological assumption lives here (CLAUDE.md principle 9), so results are
+# reproducible from source + config. Override per-experiment under configs/experiments/.
+
+# ---- Crash definition (section 1) ------------------------------------------------
+crash:
+  # A qualifying crash is any day with daily adjusted return <= threshold.
+  # Every qualifying day is its own event: no cooldown, no future-dependent suppression.
+  threshold: -0.10
+
+# ---- Recovery labels / outcomes (section 2) --------------------------------------
+labels:
+  recovery_thresholds: [0.05, 0.10, 0.20]   # +5% / +10% / +20%
+  horizons_trading_days: [5, 20, 60]
+  # Primary modeling target: P(close >= +10% within 20 trading days), close-based.
+  primary:
+    recovery_threshold: 0.10
+    horizon_trading_days: 20
+    basis: close                            # close | intraday_high
+
+# ---- Research universe (section 4) -----------------------------------------------
+universe:
+  # CRSP common-stock filter: share codes 10/11, exchanges NYSE/AMEX/Nasdaq (1/2/3).
+  share_codes: [10, 11]
+  exchange_codes: [1, 2, 3]
+  # Liquidity filters are point-in-time (computed only from pre/at-event data).
+  min_price: 5.0
+  min_trailing_dollar_volume: null          # null = disabled for now
+
+# ---- Data source (section 5) -----------------------------------------------------
+data_source:
+  provider: wrds
+  crsp_format: ciz                          # ciz (crsp.dsf_v2) | siz (crsp.dsf)
+
+# ---- Chronological splits (section 20) -------------------------------------------
+# Illustrative; finalize from actual coverage. Test period is price-bound (~2025-12-31).
+splits:
+  train:      ["2003-01-01", "2018-12-31"]
+  validation: ["2019-01-01", "2021-12-31"]
+  test:       ["2022-01-01", "2025-12-31"]
+  # Embargo so forward outcome windows do not cross split boundaries.
+  embargo_trading_days: 60
+
+# ---- Missing-data policy (section 15 / principle 10) -----------------------------
+missing_data:
+  policy: flag                              # flag | drop | impute
+
+# ---- Filesystem layout -----------------------------------------------------------
+paths:
+  data_raw: data/raw
+  data_normalized: data/normalized
+  data_processed: data/processed
+  data_events: data/events
+  reports: reports
+
+# ---- Logging ---------------------------------------------------------------------
+logging:
+  level: INFO

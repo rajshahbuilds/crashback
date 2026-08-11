@@ -1,0 +1,56 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "crashback"
+version = "0.1.0"
+description = "Short-term stock-price recovery prediction after large crashes (research pipeline)."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Proprietary" }
+authors = [{ name = "Studio R42" }]
+
+dependencies = [
+    # bulk data / analytics
+    "polars>=1.0",
+    "duckdb>=1.0",
+    "pyarrow>=15",
+    "pandas>=2.0",
+    # config / validation
+    "pydantic>=2.0",
+    "pyyaml>=6.0",
+    # modeling
+    "scikit-learn>=1.4",
+    "lightgbm>=4.0",
+    # data provider (WRDS: CRSP + Compustat)
+    "wrds>=3.3",
+    "sqlalchemy>=2.0",
+    "psycopg2-binary>=2.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.5",
+]
+notebooks = [
+    "jupyterlab>=4.0",
+    "ipykernel>=6.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/crashback"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests", "scripts"]
+
+[tool.ruff.lint]
+# Curated baseline: pycodestyle/pyflakes + import sorting + pyupgrade + bugbear.
+select = ["E", "F", "I", "UP", "B"]
