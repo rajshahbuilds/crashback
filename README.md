@@ -136,5 +136,7 @@ prices = p.get_daily_prices([14593], date(2008, 9, 1), date(2008, 9, 30))  # can
 **M1 — Data Source & Research Foundation:** STU-43 (WRDS validation), STU-44 (repo
 skeleton), STU-45 (provider interfaces), STU-46 (Supabase metadata) — done.
 **M2 — Security Master & Historical Prices:** STU-47 (survivorship-safe security master)
-done — see [`reports/STU-47_security_master.md`](./reports/STU-47_security_master.md).
-Next: STU-48 (ingest & normalize historical daily prices).
+and STU-48 (85.3M-row daily price history, 1925–2025) done — see
+[`reports/STU-47_security_master.md`](./reports/STU-47_security_master.md) and
+[`reports/STU-48_daily_prices.md`](./reports/STU-48_daily_prices.md).
+Next: STU-49 (crash-event detection).
