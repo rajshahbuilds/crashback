@@ -106,6 +106,29 @@ null `rdq` require a fallback lag policy — to be decided in STU-54/55.
 
 ---
 
+## Sample extraction & sanity check (final acceptance criterion)
+
+`scripts/export_wrds_sample.py` pulls a small sample to Parquet under
+`data/raw/wrds_sample/` (gitignored — prototype data, not the research set):
+
+| File | Rows | Content |
+|---|---|---|
+| `prices_active_aapl.parquet` | 146 | AAPL daily (CIZ), 2008-09-02 → 2009-03-31 |
+| `prices_delisted_leh.parquet` | 181 | Lehman (permno 80599) daily, 2008-01-02 → 2008-09-18 |
+| `delist_leh.parquet` | 1 | Lehman delisting record |
+| `fundamentals_aapl_fundq.parquet` | 4 | AAPL quarterly fundamentals via CCM link |
+| `crash_events_sample.parquet` | 22 | days with `dlyret <= -10%` across the sample |
+
+Sanity results (manually checked):
+- **Active (AAPL):** worst day **−17.9%** on 2008-09-29; close $78.20–$166.96. ✅
+- **Delisted (Lehman):** close $66 → $0.13; worst day **−94.25%** on 2008-09-15;
+  delisting `dlstdt=2008-09-17`, **`dlstcd=574`** (bankruptcy/liquidation), `dlret=−0.60`. ✅
+- **Fundamentals via CCM:** AAPL `gvkey=001690`, latest `fundq` `datadate=2026-06-30`,
+  `rdq=2026-07-30`, `saleq=$109.4B`, `atq=$383.3B` — all plausible. ✅
+- **Edge case flagged:** a post-delist row (2008-09-18) carries `dlyret=−0.60` but null
+  `ticker`/`dlyclose`. Delisting-period rows need explicit handling in STU-48/50 (do not
+  silently drop; the delisting return is the informative value).
+
 ## Recommendation
 
 STU-43 is **complete and passing**. Proceed to **STU-44** (repo init) and **STU-45**
