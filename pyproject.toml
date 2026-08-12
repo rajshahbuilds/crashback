@@ -25,6 +25,7 @@ dependencies = [
     # modeling
     "scikit-learn>=1.4",
     "lightgbm>=4.0",
+    "xgboost>=2.0",
     # data provider (WRDS: CRSP + Compustat)
     "wrds>=3.3",
     "sqlalchemy>=2.0",
