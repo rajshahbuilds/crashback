@@ -140,5 +140,7 @@ and STU-48 (85.3M-row daily price history, 1925–2025) done — see
 [`reports/STU-47_security_master.md`](./reports/STU-47_security_master.md) and
 [`reports/STU-48_daily_prices.md`](./reports/STU-48_daily_prices.md).
 **M3 — Crash Events & Recovery Labels:** STU-49 (crash-event detection — 1.15M events,
-268k in-universe & liquid) done — see [`reports/STU-49_crash_events.md`](./reports/STU-49_crash_events.md).
-Next: STU-50 (recovery labels & continuous outcomes).
+268k in-universe & liquid) and STU-50 (recovery labels — base rate P(+10% / 20d) ≈ 56% on
+the clean pool) done — see [`reports/STU-49_crash_events.md`](./reports/STU-49_crash_events.md)
+and [`reports/STU-50_recovery_labels.md`](./reports/STU-50_recovery_labels.md).
+Next: STU-51 (crash-day & pre-crash price features).
