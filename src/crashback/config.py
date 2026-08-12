@@ -140,10 +140,32 @@ class LogisticModelConfig(_Base):
     max_iter: int = Field(1000, gt=0)
 
 
+class LightGBMConfig(_Base):
+    # Fixed training controls.
+    learning_rate: float = Field(0.03, gt=0)
+    num_boost_round: int = Field(2000, gt=0)
+    early_stopping_rounds: int = Field(50, gt=0)
+    # Predeclared validation-selection criterion (lower is better).
+    primary_metric: str = "log_loss"
+    # Predeclared hyperparameter grid — the Cartesian product is searched on VALIDATION only.
+    num_leaves: list[int] = Field(default_factory=lambda: [15, 31, 63])
+    min_child_samples: list[int] = Field(default_factory=lambda: [50, 200])
+    feature_fraction: list[float] = Field(default_factory=lambda: [0.7, 1.0])
+    lambda_l2: list[float] = Field(default_factory=lambda: [0.0, 1.0])
+
+    @field_validator("primary_metric")
+    @classmethod
+    def _valid_metric(cls, v: str) -> str:
+        if v not in {"log_loss", "brier"}:
+            raise ValueError(f"lightgbm.primary_metric must be log_loss|brier, got {v!r}")
+        return v
+
+
 class ModelsConfig(_Base):
     seed: int = 42
     calibration_bins: int = Field(10, gt=1)
     logistic: LogisticModelConfig = Field(default_factory=LogisticModelConfig)
+    lightgbm: LightGBMConfig = Field(default_factory=LightGBMConfig)
 
 
 class PathsConfig(_Base):

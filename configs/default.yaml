@@ -59,6 +59,18 @@ models:
   logistic:
     C: 1.0                                  # inverse L2 strength
     max_iter: 1000
+  # LightGBM (STU-60). The grid below is the *predeclared* search space; its Cartesian
+  # product is scored on the VALIDATION period only and the best is picked by primary_metric.
+  # No oversampling — class prevalence is preserved (is_unbalance/scale_pos_weight left off).
+  lightgbm:
+    learning_rate: 0.03
+    num_boost_round: 2000                   # upper bound; early stopping picks the real count
+    early_stopping_rounds: 50
+    primary_metric: log_loss                # validation selection criterion (lower better)
+    num_leaves: [15, 31, 63]
+    min_child_samples: [50, 200]
+    feature_fraction: [0.7, 1.0]
+    lambda_l2: [0.0, 1.0]
 
 # ---- Filesystem layout -----------------------------------------------------------
 paths:
