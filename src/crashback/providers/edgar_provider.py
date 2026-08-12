@@ -22,8 +22,11 @@ recent sample.
 """
 from __future__ import annotations
 
+import html
 import json
+import re
 import time
+import urllib.error
 import urllib.request
 from datetime import datetime, timedelta
 
@@ -55,6 +58,18 @@ def _parse_acceptance(s: str | None) -> datetime | None:
         return None
 
 
+def _html_to_text(raw: str) -> str:
+    """Strip HTML/XBRL markup to readable plain text (best-effort, stdlib-only)."""
+    raw = re.sub(r"(?is)<(script|style|head).*?</\1>", " ", raw)
+    raw = re.sub(r"(?i)<br\s*/?>", "\n", raw)
+    raw = re.sub(r"(?i)</(p|div|tr|h[1-6]|li)>", "\n", raw)
+    raw = re.sub(r"<[^>]+>", " ", raw)
+    text = html.unescape(raw)
+    text = re.sub(r"[ \t\xa0]+", " ", text)
+    text = re.sub(r"\n\s*\n\s*\n+", "\n\n", text)
+    return text.strip()
+
+
 def _parse_date(s: str | None):
     if not s:
         return None
@@ -80,14 +95,41 @@ class EDGARProvider(DocumentProvider):
         self._ticker_map: dict[str, int] | None = None
 
     # --- network (kept separate from parsing so tests stay hermetic) ---------------
-    def _get_json(self, url: str) -> dict:
+    def _get(self, url: str) -> bytes:
         wait = self._min_interval - (time.monotonic() - self._last_fetch)
         if wait > 0:
             time.sleep(wait)
         req = urllib.request.Request(url, headers={"User-Agent": self.user_agent})
         with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310 - fixed SEC host
             self._last_fetch = time.monotonic()
-            return json.loads(resp.read().decode("utf-8"))
+            return resp.read()
+
+    def _get_json(self, url: str) -> dict:
+        return json.loads(self._get(url).decode("utf-8"))
+
+    def fetch_document_text(self, index_url: str, *, max_chars: int = 40000) -> str:
+        """Fetch a filing's main text: prefer the EX-99.x exhibit (earnings release), else the
+        primary document. HTML is stripped to plain text and truncated to ``max_chars``.
+
+        Best-effort and heuristic — enough to feed the extractor, not a full XBRL parser. Returns
+        ``""`` on any fetch/parse failure so one bad filing never aborts a batch.
+        """
+        try:
+            base = index_url.rsplit("/", 1)[0]
+            # deterministic directory listing (more robust than scraping the index HTML)
+            listing = self._get_json(f"{base}/index.json")
+            names = [it.get("name", "") for it in listing.get("directory", {}).get("item", [])]
+            docs = [n for n in names
+                    if re.search(r"\.(htm|html|txt)$", n, re.I) and "index" not in n.lower()]
+            # prefer an EX-99 exhibit (press/earnings release), then the largest remaining doc
+            exhibit = next((d for d in docs if re.search(r"ex[-_]?99", d, re.I)), None)
+            pick = exhibit or (docs[0] if docs else None)
+            if pick is None:
+                return ""
+            raw = self._get(f"{base}/{pick}").decode("utf-8", "ignore")
+            return _html_to_text(raw)[:max_chars]
+        except (urllib.error.URLError, ValueError, KeyError):
+            return ""
 
     def resolve_cik(self, ticker: str) -> str | None:
         """Current ticker→CIK via SEC company_tickers.json (see identifier caveat)."""
