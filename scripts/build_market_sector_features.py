@@ -49,7 +49,8 @@ def main():
     path = write_versioned_parquet(
         feats, out_dir, "features_market_sector", args.version,
         meta={"features": list(FEATURE_NAMES), "rows": feats.height,
-              "market_weight": "equal", "sector": "2-digit SIC", "focal_excluded": "sector_return_1d"},
+              "market_weight": "equal", "sector": "2-digit SIC",
+              "focal_excluded": "sector_return_1d"},
         git_commit=current_git_commit(),
     )
     print(f"\nwrote {path}\nDONE.")
