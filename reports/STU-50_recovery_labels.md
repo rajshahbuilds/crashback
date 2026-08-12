@@ -14,7 +14,8 @@ delisting handling. Written to versioned Parquet.
 - **Binary grid, intraday-high (9):** same names with a **`_hi`** suffix — kept strictly
   separate so they can never be confused with the close-based primaries.
 - **Continuous (3 × horizon):** `return_{h}d`, `max_rebound_{h}d`, `max_drawdown_{h}d`.
-- **Meta:** `censored_{h}d`, `n_forward_{h}d`, `crash_close`, `delisting_return_missing`.
+- **Meta:** `censored_{h}d`, `no_close_data`, `n_forward_{h}d`, `crash_close`,
+  `delisting_return_missing`.
 
 All measured over forward **trading-day** windows via a per-security sequence index (not
 calendar days).
@@ -31,15 +32,19 @@ calendar days).
     `hit=0` and its drawdown reflects the loss. Censoring delisted names would re-introduce
     survivorship bias.
 - **Missing CRSP delisting returns** are flagged (`delisting_return_missing`), not imputed.
-- **Never dropped:** events with no valid close (CRSP no-trade days) can't have close-based
-  labels, so they are censored/null — flagged, not treated as failures.
+- **Two distinct null reasons, kept separate:** `censored_{h}d` means genuine horizon
+  censoring — a valid P0 but an *active* security whose window runs past the data edge
+  (fewer than h forward trading rows). `no_close_data` means the crash-day close (P0) is null
+  (CRSP no-trade day) so nothing is anchorable. Both null the labels; neither is a failure.
 
 ## Result
 
 - **1,153,414** label rows; **CLEAN pool (in-universe & ≥ $5): 268,452**.
-- Censoring is small and genuine within CLEAN: 3,583 / 6,090 / 8,981 at 5/20/60d
-  (~2.3% at 20d), all with valid closes. (Raw censored_20d = 32,617 includes 6,456 no-close
-  illiquid events + 26,161 data-edge; none of the CLEAN pool has a null close.)
+- With the flags separated: `censored_{h}d` = **387 / 1,451 / 4,618** at 5/20/60d — pure
+  data-edge, all in the 2020s (active stocks whose window runs past 2025-12-31), all with
+  valid closes. `no_close_data` = **183,354** events (CRSP no-trade days), all outside CLEAN
+  (which has zero null-close events). So the base rate is computed on genuinely determinable
+  events only.
 
 ### Base rates (CLEAN, determined events) — a preview; full analysis is STU-57
 

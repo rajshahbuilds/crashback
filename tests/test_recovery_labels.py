@@ -57,6 +57,7 @@ def _labels():
 
 def test_active_full_recovery():
     r = _labels()[1]
+    assert r["no_close_data"] is False
     assert r["hit_5pct_2d"] == 1 and r["hit_10pct_2d"] == 0   # max 106: >=105, <110
     assert r["hit_10pct_3d"] == 1                              # max 112 >= 110
     assert r["censored_2d"] is False and r["censored_3d"] is False
@@ -99,6 +100,28 @@ def test_intraday_high_variant_distinct_from_close():
     assert r["hit_10pct_2d"] == 0
     assert r["hit_10pct_2d_hi"] == 1
     assert r["hit_5pct_2d"] == 0 and r["hit_5pct_2d_hi"] == 1
+
+
+def test_no_close_data_is_distinct_from_censoring():
+    # A security with no closing prices (CRSP no-trade days) -> no anchor. It must be flagged
+    # no_close_data, NOT censored (which is reserved for genuine data-edge on valid closes).
+    prices = pl.DataFrame(
+        {"security_id": [7, 7, 7], "date": [_D[0], _D[1], _D[2]],
+         "close": [None, None, None], "high": [None, None, None]},
+        schema_overrides={"close": pl.Float64, "high": pl.Float64},
+    )
+    master = pl.DataFrame(
+        {"security_id": [7], "delisting_date": [None], "delisting_return": [None]},
+        schema_overrides={"delisting_date": pl.Date, "delisting_return": pl.Float64},
+    )
+    events = pl.DataFrame(
+        {"event_id": ["7"], "security_id": [7], "crash_date": [_D[0]], "crash_close": [None]},
+        schema_overrides={"crash_close": pl.Float64},
+    )
+    r = build_labels(events, prices, master, horizons=H, thresholds=T).row(0, named=True)
+    assert r["no_close_data"] is True
+    assert r["censored_2d"] is False and r["censored_3d"] is False
+    assert r["hit_10pct_2d"] is None and r["return_2d"] is None
 
 
 def test_default_horizons_expose_primary_target_column():
