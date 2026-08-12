@@ -149,5 +149,7 @@ and [`reports/STU-50_recovery_labels.md`](./reports/STU-50_recovery_labels.md).
 [`reports/STU-52_recent_crash_features.md`](./reports/STU-52_recent_crash_features.md), and
 [`reports/STU-53_market_sector_features.md`](./reports/STU-53_market_sector_features.md).
 **M5 — Point-in-Time Fundamentals:** STU-54 (ingest unrestated Compustat quarterly, 1.35M
-firm-quarters) done — see [`reports/STU-54_fundamentals.md`](./reports/STU-54_fundamentals.md).
-Next: STU-55 (as-of join fundamentals to events), then STU-56/57 (assemble dataset + base rates).
+firm-quarters) and STU-55 (leakage-free as-of join + derived features; 0 leaks / 862k matched)
+done — see [`reports/STU-54_fundamentals.md`](./reports/STU-54_fundamentals.md) and
+[`reports/STU-55_fundamentals_asof.md`](./reports/STU-55_fundamentals_asof.md).
+Next: STU-56 (assemble the master events_v1 dataset), then STU-57 (descriptive base rates).
