@@ -40,7 +40,8 @@ class AnthropicClient(LLMClient):
     """
 
     def __init__(self, model: str = "claude-sonnet-5", *, max_tokens: int = 1500,
-                 api_key: str | None = None):
+                 api_key: str | None = None, tool_schema: dict | None = None,
+                 tool_name: str = "emit_assessment"):
         try:
             import anthropic  # noqa: PLC0415 - optional dependency, imported on use
         except ImportError as e:  # pragma: no cover - depends on env
@@ -50,12 +51,24 @@ class AnthropicClient(LLMClient):
             raise RuntimeError("ANTHROPIC_API_KEY not set")
         self.model = model
         self.max_tokens = max_tokens
+        # tool_schema forces structured (tool-use) output → the SDK returns already-parsed JSON,
+        # eliminating free-text JSON parse failures (e.g. unescaped quotes in evidence excerpts).
+        self._tool_schema = tool_schema
+        self._tool_name = tool_name
         self._client = anthropic.Anthropic(api_key=key)
 
     def complete(self, system: str, user: str) -> str:  # pragma: no cover - needs live API
-        msg = self._client.messages.create(
-            model=self.model, max_tokens=self.max_tokens, system=system,
-            messages=[{"role": "user", "content": user}])
+        kwargs = {"model": self.model, "max_tokens": self.max_tokens, "system": system,
+                  "messages": [{"role": "user", "content": user}]}
+        if self._tool_schema is not None:
+            kwargs["tools"] = [{"name": self._tool_name,
+                                "description": "Emit the structured crash-cause assessment.",
+                                "input_schema": self._tool_schema}]
+            kwargs["tool_choice"] = {"type": "tool", "name": self._tool_name}
+        msg = self._client.messages.create(**kwargs)
+        for b in msg.content:
+            if getattr(b, "type", None) == "tool_use":
+                return json.dumps(b.input)
         return "".join(b.text for b in msg.content if getattr(b, "type", None) == "text")
 
 

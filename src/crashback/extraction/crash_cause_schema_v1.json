@@ -27,8 +27,7 @@
       "type": "string"
     },
     "EvidenceRef": {
-      "additionalProperties": false,
-      "description": "A supporting excerpt tying an assessment field to a retrieved document.",
+      "description": "A supporting excerpt tying an assessment field to a retrieved document.\n\nExtra keys are ignored (not forbidden): LLM tool-use sometimes adds helper fields like a\ncontext note; we keep only the contracted fields. The top-level assessment stays strict.",
       "properties": {
         "supports": {
           "description": "Which assessment field this evidence supports.",

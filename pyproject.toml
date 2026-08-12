@@ -26,6 +26,8 @@ dependencies = [
     "scikit-learn>=1.4",
     "lightgbm>=4.0",
     "xgboost>=2.0",
+    # V2 crash-cause extraction (LLM)
+    "anthropic>=0.40",
     # data provider (WRDS: CRSP + Compustat)
     "wrds>=3.3",
     "sqlalchemy>=2.0",

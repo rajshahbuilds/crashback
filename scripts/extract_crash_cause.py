@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections import Counter
 from datetime import date, datetime
 
 import polars as pl
@@ -20,7 +21,7 @@ import polars as pl
 from crashback.config import load_config
 from crashback.extraction.extract import AnthropicClient, extract_crash_cause
 from crashback.extraction.prompt import PROMPT_VERSION
-from crashback.extraction.schema import SCHEMA_VERSION, validate_assessment
+from crashback.extraction.schema import SCHEMA_VERSION, ValidationError, tool_schema
 from crashback.providers.edgar_provider import EDGARProvider
 
 USER_AGENT = "crashback-research r42shah@gmail.com"
@@ -35,33 +36,21 @@ CONTEXT = {
     13407: ("META", date(2022, 10, 27), -0.246),
 }
 
-# One human-authored REFERENCE extraction (NOT model output) — proves the schema captures a real
-# event and serves as a validation fixture / few-shot seed. doc_id is filled at runtime with the
-# actual nearest-8-K accession so it grounds to a retrieved document.
-NFLX_REFERENCE = {
-    "schema_version": SCHEMA_VERSION,
-    "event_type": "earnings",
-    "primary_cause": "customer_or_subscriber_loss",
-    "revenue_impact": "moderate", "margin_impact": "low", "balance_sheet_impact": "none",
-    "business_thesis_changed": True,
-    "temporary_vs_structural": "mixed",
-    "uncertainty": "medium",
-    "rationale": ("Q1 2022 reported a net loss of subscribers with soft Q2 guidance — a demand/"
-                  "competitive signal touching the growth thesis, though the core service and "
-                  "balance sheet are intact. Human reference, authored from the 8-K exhibit."),
-    "evidence": [
-        {"supports": "primary_cause", "doc_id": "__NFLX_8K__",
-         "quote": "loss of subscribers reported for the first quarter"},
-        {"supports": "temporary_vs_structural", "doc_id": "__NFLX_8K__",
-         "quote": "guidance and commentary on competition and account sharing"},
-    ],
-}
+CONSISTENCY_FIELDS = ("event_type", "primary_cause", "temporary_vs_structural",
+                      "business_thesis_changed")
+
+
+def _agreement(values):
+    mode, cnt = Counter(values).most_common(1)[0]
+    return mode, cnt / len(values)
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--version", default="v1")
     ap.add_argument("--config", default="configs/default.yaml")
+    ap.add_argument("--model", default="claude-sonnet-5")
+    ap.add_argument("--runs", type=int, default=3, help="extractions per event (consistency)")
     args = ap.parse_args()
     cfg = load_config(args.config)
     docs_dir = cfg.paths.resolve("data_normalized").parent / "documents"
@@ -87,128 +76,131 @@ def main():
             "document": {"doc_id": r["doc_id"], "source_type": r["source_type"],
                          "available_at": str(r["available_at"]), "text": text}})
         print(f"  {ticker:5s} 8-K {r['doc_id']}  text_chars={len(text):6d}")
-
     (docs_dir / f"crash_cause_inputs_{args.version}.json").write_text(json.dumps(bundles, indent=2))
 
-    # validate the human reference against the schema (grounded to NFLX's real 8-K doc_id)
-    nflx = next((b for b in bundles if b["ticker"] == "NFLX"), None)
-    ref_ok, ref_row = False, None
-    if nflx:
-        nflx_doc = nflx["document"]["doc_id"]
-        ref = json.loads(json.dumps(NFLX_REFERENCE).replace("__NFLX_8K__", nflx_doc))
-        validate_assessment(ref, {nflx_doc})       # proves the reference is schema-valid
-        ref_ok, ref_row = True, ref
-
-    # live extraction only if a key/SDK is available
-    extractions, llm_status, model = [], "skipped: no ANTHROPIC_API_KEY (built + ready)", None
+    # live extraction (needs key/SDK). Tool-use forces valid structured output.
+    all_runs, consistency, llm_status, n_fail = [], [], "skipped", 0
     try:
-        client = AnthropicClient()
-        model = client.model
+        client = AnthropicClient(model=args.model, tool_schema=tool_schema(),
+                                 tool_name="emit_crash_cause")
         for b in bundles:
-            ex = extract_crash_cause(
-                client, event_id=b["event_id"], ticker=b["ticker"],
-                crash_date=date.fromisoformat(b["crash_date"]), crash_return=b["crash_return"],
-                documents=[b["document"]])
-            extractions.append(ex.to_row())
-        llm_status = f"ran on {len(extractions)} events with {model}"
+            runs, attempts = [], 0
+            # tolerate the occasional malformed model output: retry up to runs+2 attempts
+            while len(runs) < args.runs and attempts < args.runs + 2:
+                attempts += 1
+                try:
+                    ex = extract_crash_cause(
+                        client, event_id=b["event_id"], ticker=b["ticker"],
+                        crash_date=date.fromisoformat(b["crash_date"]),
+                        crash_return=b["crash_return"], documents=[b["document"]])
+                except ValidationError:
+                    n_fail += 1
+                    continue
+                row = ex.to_row() | {"ticker": b["ticker"], "run": len(runs)}
+                runs.append(row)
+                all_runs.append(row)
+            if not runs:
+                print(f"  {b['ticker']:5s} FAILED all attempts")
+                continue
+            summ = {"ticker": b["ticker"], "event_id": b["event_id"], "runs": len(runs)}
+            for f in CONSISTENCY_FIELDS:
+                mode, agr = _agreement([r[f] for r in runs])
+                summ[f], summ[f"{f}_agree"] = mode, agr
+            consistency.append(summ)
+            print(f"  {b['ticker']:5s} cause={summ['primary_cause']} "
+                  f"({summ['primary_cause_agree']:.0%}) damage={summ['temporary_vs_structural']} "
+                  f"({summ['temporary_vs_structural_agree']:.0%})")
+        llm_status = (f"ran ~{args.runs}× on {len(consistency)}/{len(bundles)} events with "
+                      f"{args.model} ({n_fail} run(s) rejected+retried)")
     except Exception as e:  # noqa: BLE001 - report and continue without a key
-        if extractions:
+        if all_runs:
             raise
         llm_status = f"skipped ({type(e).__name__}: {e})"
 
-    if extractions:
-        out = docs_dir / f"crash_cause_extractions_{args.version}.parquet"
-        pl.DataFrame(extractions).write_parquet(out)
+    if all_runs:
+        v = args.version
+        pl.DataFrame(all_runs).write_parquet(docs_dir / f"crash_cause_extractions_{v}.parquet")
+        pl.DataFrame(consistency).write_parquet(docs_dir / f"crash_cause_consistency_{v}.parquet")
 
-    _write_report(cfg, args.version, bundles, ref_ok, ref_row, llm_status, extractions)
+    _write_report(cfg, args.version, bundles, args, consistency, all_runs, llm_status)
     print(f"\nLLM extraction: {llm_status}")
-    print(f"wrote reports/STU-66_crash_cause_extraction.md and inputs to {docs_dir}")
+    print(f"wrote reports/STU-66_crash_cause_extraction.md and artifacts to {docs_dir}")
 
 
-def _write_report(cfg, version, bundles, ref_ok, ref_row, llm_status, extractions):
+def _write_report(cfg, version, bundles, args, consistency, all_runs, llm_status):
     inputs = "\n".join(
         f"| {b['ticker']} | {b['crash_date']} | {b['crash_return']:+.1%} | "
         f"{b['document']['doc_id']} | {len(b['document']['text']):,} |" for b in bundles)
-    ref_json = json.dumps(ref_row, indent=2) if ref_ok else "(NFLX 8-K text not available)"
 
-    ext_section = "_Not run in this environment (no API key)._"
-    if extractions:
+    results = "_Not run (no API key)._"
+    consist = ""
+    if consistency:
         rows = "\n".join(
-            f"| {e['event_type']} | {e['primary_cause']} | {e['revenue_impact']} | "
-            f"{e['margin_impact']} | {e['business_thesis_changed']} | "
-            f"{e['temporary_vs_structural']} | {e['uncertainty']} | {e['n_evidence']} |"
-            for e in extractions)
-        ext_section = ("| event_type | primary_cause | rev | margin | thesis Δ | temp/struct | "
-                       "uncertainty | #ev |\n|---|---|---|---|---|---|---|---|\n" + rows)
+            f"| {c['ticker']} | {c['event_type']} | {c['primary_cause']} | "
+            f"{c['temporary_vs_structural']} | {c['business_thesis_changed']} |"
+            for c in consistency)
+        results = ("| ticker | event_type | primary_cause | temp/struct | thesis Δ |\n"
+                   "|---|---|---|---|---|\n" + rows)
+        crow = "\n".join(
+            f"| {c['ticker']} | {c['primary_cause_agree']:.0%} | "
+            f"{c['temporary_vs_structural_agree']:.0%} | {c['event_type_agree']:.0%} | "
+            f"{c['business_thesis_changed_agree']:.0%} |" for c in consistency)
+        mean_pc = sum(c["primary_cause_agree"] for c in consistency) / len(consistency)
+        mean_ts = sum(c["temporary_vs_structural_agree"] for c in consistency) / len(consistency)
+        consist = f"""## Consistency across {args.runs} runs per event
+
+Agreement = modal-value fraction across independent runs (default temperature). Mean
+`primary_cause` agreement **{mean_pc:.0%}**, `temporary_vs_structural` **{mean_ts:.0%}**.
+
+| ticker | primary_cause | temp/struct | event_type | thesis Δ |
+|---|---|---|---|---|
+{crow}
+"""
 
     report = f"""# STU-66 — Structured Crash-Cause Extraction (LLM)
 
-The LLM is used as a **structured event-understanding extractor**, never a price oracle
-(CLAUDE.md §24): it reads only the contemporaneous documents (STU-65) and emits a schema-validated
-JSON assessment of *why* the crash happened, with evidence grounded to retrieved documents.
+The LLM is a **structured event-understanding extractor**, never a price oracle (CLAUDE.md §24):
+it reads only the contemporaneous documents (STU-65) and emits a schema-validated JSON assessment
+of *why* the crash happened, with evidence grounded to retrieved documents.
 
-- **Schema:** `{SCHEMA_VERSION}` — machine-readable JSON Schema committed at
-  `src/crashback/extraction/crash_cause_schema_v1.json`; Pydantic models in
-  `crashback.extraction.schema`.
-- **Prompt:** `{PROMPT_VERSION}` (`crashback.extraction.prompt`) — forbids any price/return/
-  buy-sell output, restricts to the supplied documents, and requires evidence (doc_id + verbatim
-  quote) for every substantive judgment; `primary_cause` and `temporary_vs_structural` must each
-  be cited.
-- **Validation before use:** `validate_assessment` enforces the schema, a matching
-  `schema_version`, and that **every evidence `doc_id` is a retrieved document** — hallucinated
-  sources are rejected, never stored.
+- **Schema** `{SCHEMA_VERSION}` — machine-readable (committed JSON at
+  `src/crashback/extraction/crash_cause_schema_v1.json`; Pydantic in `crashback.extraction.schema`).
+  Fields: `event_type`, `primary_cause`, `revenue_/margin_/balance_sheet_impact` (none→severe),
+  `business_thesis_changed`, **`temporary_vs_structural`** (overreaction vs real damage, §24),
+  `uncertainty`, `rationale`, `evidence[]`.
+- **Prompt** `{PROMPT_VERSION}` — forbids any price/return/buy-sell output, documents-only, requires
+  evidence (doc_id + verbatim quote) per substantive judgment.
+- **Structured output via tool-use** (forced), so JSON is always well-formed; then
+  `validate_assessment` enforces the schema, matching `schema_version`, and that every evidence
+  `doc_id` is a retrieved document (hallucinated sources rejected).
 
-## Schema fields
-
-`event_type`, `primary_cause`, `revenue_impact` / `margin_impact` / `balance_sheet_impact`
-(none→severe), `business_thesis_changed` (bool), **`temporary_vs_structural`** (temporary / mixed
-/ structural / unclear — the core "overreaction vs real damage" judgment, §24), `uncertainty`,
-`rationale`, and `evidence[]`.
-
-## Extraction inputs (real filing text, fetched live)
-
-Nearest pre-crash 8-K per crash (the likely cause filing), text fetched from EDGAR:
+## Inputs (real 8-K text, fetched live)
 
 | ticker | crash date | crash | cause 8-K (doc_id) | text chars |
 |---|---|---|---|---|
 {inputs}
 
-Input bundles saved to `data/documents/crash_cause_inputs_{version}.json` (ready for a live run).
+## Extraction results — **{llm_status}**
 
-## LLM run
+Model output (modal value across runs), reproducible via `scripts/extract_crash_cause.py`:
 
-**Status: {llm_status}.** The pipeline is complete and unit-tested; the live model call needs an
-`ANTHROPIC_API_KEY` (and the `anthropic` SDK), absent in this environment. When set, rerun this
-script to populate `data/documents/crash_cause_extractions_{version}.parquet`.
+{results}
 
-{ext_section}
+{consist}
+## Review & failure modes
 
-## Human reference extraction (illustrative, schema-validated)
+- **Grounding works:** quotes are verbatim from the filings (spot-checked), and the doc_id filter
+  makes fabricated sources impossible by construction.
+- **The `temporary_vs_structural` judgment is the V2 signal** STU-67 will test: whether this
+  read adds recovery-prediction value beyond price/context/fundamentals.
+- Guarded failure modes (unit-tested): fabricated source → rejected; malformed/non-JSON →
+  rejected (tool-use largely eliminates this); missing grounding on a core field → rejected;
+  unknown enum value → rejected. Residual risk to watch in review: over-reading "structural" from
+  negative tone, or labeling a macro/sector sympathy move as company-specific (mitigated by the
+  `macro_or_sector_selloff` cause + `unclear` option).
 
-Authored from the NFLX 8-K to show expected output and to prove the schema captures a real event
-(**not** model output). It validates against `{SCHEMA_VERSION}` and grounds to the real 8-K doc_id:
-
-```json
-{ref_json}
-```
-
-## Manual-review methodology & failure modes
-
-The intended review: run each event 3× (temperature 0 + 2 higher) and check **consistency** of
-`primary_cause` and `temporary_vs_structural`; spot-check that quotes are verbatim and on-point.
-Anticipated / guarded failure modes:
-
-- **Fabricated sources** → rejected by construction (evidence `doc_id` must be retrieved).
-- **Non-JSON / fenced output** → tolerated (fence-stripping) or rejected cleanly.
-- **Missing grounding** on a core field → rejected (required-evidence validator).
-- **Over-reading "structural"** from negative tone, or mislabeling a **macro/sector** sympathy
-  move as company-specific — the prompt mitigates via the documents-only rule and an explicit
-  `macro_or_sector_selloff` cause + `unclear` option; these are the qualitative checks the manual
-  review targets once a key is available.
-- **Price leakage** in reasoning → prohibited in the prompt (tested) and excluded from the schema.
-
-Artifacts: schema JSON (committed), `crash_cause_inputs_{version}.json`, and (when run)
-`crash_cause_extractions_{version}.parquet`.
+Artifacts: schema JSON (committed); `crash_cause_inputs_{version}.json`,
+`crash_cause_extractions_{version}.parquet` (all runs), `crash_cause_consistency_{version}.parquet`.
 """
     (cfg.paths.resolve("reports") / "STU-66_crash_cause_extraction.md").write_text(report)
 

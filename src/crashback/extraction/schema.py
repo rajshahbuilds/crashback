@@ -78,8 +78,14 @@ class Uncertainty(StrEnum):
     high = "high"
 
 
-class EvidenceRef(_Base):
-    """A supporting excerpt tying an assessment field to a retrieved document."""
+class EvidenceRef(BaseModel):
+    """A supporting excerpt tying an assessment field to a retrieved document.
+
+    Extra keys are ignored (not forbidden): LLM tool-use sometimes adds helper fields like a
+    context note; we keep only the contracted fields. The top-level assessment stays strict.
+    """
+
+    model_config = ConfigDict(extra="ignore", frozen=True)
 
     supports: str = Field(..., description="Which assessment field this evidence supports.")
     doc_id: str = Field(..., description="doc_id of a RETRIEVED document (no invented sources).")
@@ -139,3 +145,24 @@ def validate_assessment(raw: dict, allowed_doc_ids: set[str]) -> CrashCauseAsses
 def json_schema() -> dict:
     """The machine-readable JSON Schema for the assessment (for prompts + auditing)."""
     return CrashCauseAssessment.model_json_schema()
+
+
+def _inline_refs(node, defs):
+    """Recursively inline ``$ref`` → ``$defs`` so the schema is self-contained (no refs)."""
+    if isinstance(node, dict):
+        if "$ref" in node:
+            return _inline_refs(defs[node["$ref"].split("/")[-1]], defs)
+        return {k: _inline_refs(v, defs) for k, v in node.items() if k != "$defs"}
+    if isinstance(node, list):
+        return [_inline_refs(x, defs) for x in node]
+    return node
+
+
+def tool_schema() -> dict:
+    """Dereferenced, self-contained JSON Schema for LLM tool-use (structured output).
+
+    Tool-use is far more reliable than parsing free-text JSON, but nested ``$ref``/``$defs`` can
+    make models skip fields — so we inline everything into one flat schema.
+    """
+    s = json_schema()
+    return _inline_refs(s, s.get("$defs", {}))
