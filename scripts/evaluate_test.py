@@ -24,7 +24,7 @@ from sklearn.isotonic import IsotonicRegression
 
 from crashback.config import load_config
 from crashback.datasets.assemble import PRIMARY_TARGET
-from crashback.evaluation.lift import decile_table, top_decile_lift
+from crashback.evaluation.lift import confidence_bands, decile_table, top_decile_lift
 from crashback.evaluation.metrics import binary_metrics, calibration_table
 from crashback.models.logistic import fit_base_rate
 from crashback.models.stages import stage_features
@@ -93,6 +93,12 @@ def main():
     deciles, base_rate_te = decile_table(y_te, p_te_raw, q=10)
     tdl = top_decile_lift(y_te, p_te_raw, q=10)
 
+    # confidence bands + expected-return-by-band (recovery probability vs actual return)
+    cbands = confidence_bands(
+        p_te_raw, y_te, ret=test["return_20d"].to_numpy(),
+        dd=test["max_drawdown_20d"].to_numpy(), width=0.1)
+    cbands.write_parquet(models_dir / f"test_confidence_bands_{args.version}.parquet")
+
     reliab.write_parquet(models_dir / f"test_reliability_raw_{args.version}.parquet")
     reliab_cal.write_parquet(models_dir / f"test_reliability_cal_{args.version}.parquet")
     deciles.write_parquet(models_dir / f"test_deciles_{args.version}.parquet")
@@ -119,7 +125,7 @@ def main():
     (models_dir / f"test_eval_{args.version}.json").write_text(json.dumps(run_meta, indent=2))
 
     _write_report(cfg, args.version, target, test_metrics, eces, val_metrics, reliab,
-                  deciles, tdl, base_model.rate, base_rate_te, test.height)
+                  deciles, tdl, base_model.rate, base_rate_te, test.height, cbands)
     print("\n=== TEST results (locked XGBoost model2) ===")
     for name in preds:
         m = test_metrics[name]
@@ -130,8 +136,12 @@ def main():
     print(f"\nwrote reports/STU-62_test_evaluation.md and test artifacts to {models_dir}")
 
 
+def _pct(v, nd=1):
+    return "—" if v is None or (isinstance(v, float) and v != v) else f"{v * 100:+.{nd}f}%"
+
+
 def _write_report(cfg, version, target, tm, eces, vm, reliab, deciles, tdl,
-                  train_base, test_base, n_test):
+                  train_base, test_base, n_test, cbands):
     def row(name, label):
         m = tm[name]
         return (f"| {label} | {_fmt(m['log_loss'])} | {_fmt(m['brier'])} | {_fmt(m['roc_auc'])} "
@@ -145,6 +155,21 @@ def _write_report(cfg, version, target, tm, eces, vm, reliab, deciles, tdl,
     dec_rows = "\n".join(
         f"| {r['bucket']} | {r['n']:,} | {r['mean_pred']:.3f} | {r['observed_rate']:.3f} | "
         f"{r['lift']:.2f}× |" for r in deciles.iter_rows(named=True))
+
+    # confidence-band distribution + expected-return-by-band
+    cb_rows = "\n".join(
+        f"| {r['band']:.2f}–{r['hi']:.2f} | {r['n']:,} | {r['frac'] * 100:.1f}% | "
+        f"{r['mean_pred']:.3f} | {r['observed_rate']:.3f} |"
+        for r in cbands.iter_rows(named=True))
+    ev_rows = "\n".join(
+        f"| {r['band']:.2f}–{r['hi']:.2f} | {r['n']:,} | {r['observed_rate']:.3f} | "
+        f"{_pct(r['mean_return'])} | {_pct(r['mean_return_win'])} | "
+        f"{_pct(r['mean_return_lose'])} | {_pct(r['mean_maxdd'])} |"
+        for r in cbands.iter_rows(named=True))
+    worst = cbands.sort("mean_return").row(0, named=True)     # worst-EV band
+    worst_band = f"{worst['band']:.2f}–{worst['hi']:.2f}"
+    worst_ret = _pct(worst["mean_return"])
+    worst_lose = _pct(worst["mean_return_lose"])
 
     ll_lift = tm["xgb_m2_raw"]["log_loss"]
     ll_base = tm["m0_base_rate"]["log_loss"]
@@ -217,6 +242,36 @@ Base rate (test) = **{test_base:.4f}**; historically-available base rate (train)
   {bot_obs:.3f} → top decile {top_obs:.3f}, a {top_obs / bot_obs:.1f}× spread); the middle
   deciles are muddy. So even with AUC ~0.60 the model still usefully concentrates recoveries in
   its top-scored events and flags the least-likely ones — the practical payoff survives, attenuated.
+
+## Confidence-band distribution (natural bins)
+
+Equal-count deciles hide *how often* the model is actually confident. In its natural 0.1-wide
+bands the model's probabilities never leave [0.14, 0.83] — it stays near the base rate on the
+bulk of events and only rarely commits. Where it does commit, calibration holds (mean predicted
+≈ observed).
+
+| predicted band | n | % of test | mean predicted | observed recovery |
+|---|---|---|---|---|
+{cb_rows}
+
+## Expected return by confidence band ⚠️ (recovery ≠ return)
+
+The recovery *label* ("closes ≥ +10% at some point in 20d") hides the **downside when it fails**.
+Joining the continuous `return_20d` outcome shows that **recovery probability is NOT monotonic
+with expected return**: the moderately-confident bands are the *worst* economically, because the
+losers there fall much harder than the winners rise.
+
+| predicted band | n | P(+10%) | mean return | return if win | return if lose | mean max drawdown |
+|---|---|---|---|---|---|---|
+{ev_rows}
+
+- Worst-EV band is **{worst_band}** (mean return {worst_ret}, loser return {worst_lose}) — *more*
+  confident of recovery than average, yet negative expected return. High predicted-recovery names
+  are high-volatility names; when they don't bounce they keep falling.
+- Only the **extreme top band** turns clearly EV-positive, where the high win-rate finally
+  overwhelms the asymmetry. **A confidence-weighted decision must be driven by expected return /
+  downside, not by P(recovery)** — the two diverge. (Descriptive, gross of costs; §25 keeps
+  position-sizing / trading out of V1 scope.)
 
 ## Notes
 

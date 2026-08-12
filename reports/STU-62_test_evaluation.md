@@ -74,6 +74,50 @@ Base rate (test) = **0.4954**; historically-available base rate (train) = 0.5111
   deciles are muddy. So even with AUC ~0.60 the model still usefully concentrates recoveries in
   its top-scored events and flags the least-likely ones — the practical payoff survives, attenuated.
 
+## Confidence-band distribution (natural bins)
+
+Equal-count deciles hide *how often* the model is actually confident. In its natural 0.1-wide
+bands the model's probabilities never leave [0.14, 0.83] — it stays near the base rate on the
+bulk of events and only rarely commits. Where it does commit, calibration holds (mean predicted
+≈ observed).
+
+| predicted band | n | % of test | mean predicted | observed recovery |
+|---|---|---|---|---|
+| 0.10–0.20 | 145 | 0.8% | 0.181 | 0.172 |
+| 0.20–0.30 | 999 | 5.3% | 0.258 | 0.251 |
+| 0.30–0.40 | 2,058 | 10.9% | 0.354 | 0.337 |
+| 0.40–0.50 | 4,374 | 23.2% | 0.460 | 0.479 |
+| 0.50–0.60 | 7,961 | 42.2% | 0.548 | 0.536 |
+| 0.60–0.70 | 2,937 | 15.6% | 0.636 | 0.586 |
+| 0.70–0.80 | 369 | 2.0% | 0.733 | 0.756 |
+| 0.80–0.90 | 13 | 0.1% | 0.813 | 0.923 |
+
+## Expected return by confidence band ⚠️ (recovery ≠ return)
+
+The recovery *label* ("closes ≥ +10% at some point in 20d") hides the **downside when it fails**.
+Joining the continuous `return_20d` outcome shows that **recovery probability is NOT monotonic
+with expected return**: the moderately-confident bands are the *worst* economically, because the
+losers there fall much harder than the winners rise.
+
+| predicted band | n | P(+10%) | mean return | return if win | return if lose | mean max drawdown |
+|---|---|---|---|---|---|---|
+| 0.10–0.20 | 145 | 0.172 | -0.7% | +12.7% | -3.5% | -5.6% |
+| 0.20–0.30 | 999 | 0.251 | +0.2% | +11.4% | -3.5% | -6.1% |
+| 0.30–0.40 | 2,058 | 0.337 | +0.1% | +13.1% | -6.6% | -8.3% |
+| 0.40–0.50 | 4,374 | 0.479 | -1.0% | +13.4% | -14.2% | -14.0% |
+| 0.50–0.60 | 7,961 | 0.536 | -3.3% | +12.9% | -22.0% | -19.4% |
+| 0.60–0.70 | 2,937 | 0.586 | -4.5% | +10.5% | -25.6% | -21.5% |
+| 0.70–0.80 | 369 | 0.756 | +8.8% | +18.1% | -19.8% | -11.2% |
+| 0.80–0.90 | 13 | 0.923 | +14.6% | +16.0% | -2.2% | +2.4% |
+
+- Worst-EV band is **0.60–0.70** (mean return -4.5%, loser return -25.6%) — *more*
+  confident of recovery than average, yet negative expected return. High predicted-recovery names
+  are high-volatility names; when they don't bounce they keep falling.
+- Only the **extreme top band** turns clearly EV-positive, where the high win-rate finally
+  overwhelms the asymmetry. **A confidence-weighted decision must be driven by expected return /
+  downside, not by P(recovery)** — the two diverge. (Descriptive, gross of costs; §25 keeps
+  position-sizing / trading out of V1 scope.)
+
 ## Notes
 
 - Test integrity: every prior script filtered to `split=='validation'`; this is the first read
