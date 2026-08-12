@@ -152,4 +152,7 @@ and [`reports/STU-50_recovery_labels.md`](./reports/STU-50_recovery_labels.md).
 firm-quarters) and STU-55 (leakage-free as-of join + derived features; 0 leaks / 862k matched)
 done — see [`reports/STU-54_fundamentals.md`](./reports/STU-54_fundamentals.md) and
 [`reports/STU-55_fundamentals_asof.md`](./reports/STU-55_fundamentals_asof.md).
-Next: STU-56 (assemble the master events_v1 dataset), then STU-57 (descriptive base rates).
+**M6 — Master Dataset & Descriptive Analysis:** STU-56 (assemble `events_v1` — 1.15M events ×
+101 cols, features/outcomes separated) done — see
+[`reports/STU-56_events_dataset.md`](./reports/STU-56_events_dataset.md).
+Next: STU-57 (recovery base rates & descriptive slices).
