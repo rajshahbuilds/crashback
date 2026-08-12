@@ -143,6 +143,8 @@ and STU-48 (85.3M-row daily price history, 1925–2025) done — see
 268k in-universe & liquid) and STU-50 (recovery labels — base rate P(+10% / 20d) ≈ 56% on
 the clean pool) done — see [`reports/STU-49_crash_events.md`](./reports/STU-49_crash_events.md)
 and [`reports/STU-50_recovery_labels.md`](./reports/STU-50_recovery_labels.md).
-**M4 — Feature Engineering:** STU-51 (crash-day & pre-crash price features, point-in-time)
-done — see [`reports/STU-51_price_features.md`](./reports/STU-51_price_features.md).
-Next: STU-52 (recent-crash history features).
+**M4 — Feature Engineering:** STU-51 (crash-day & pre-crash price features) and STU-52
+(recent-crash history features) done — see
+[`reports/STU-51_price_features.md`](./reports/STU-51_price_features.md) and
+[`reports/STU-52_recent_crash_features.md`](./reports/STU-52_recent_crash_features.md).
+Next: STU-53 (market/sector context features).
