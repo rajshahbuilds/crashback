@@ -135,11 +135,23 @@ class MissingDataConfig(_Base):
         return v
 
 
+class LogisticModelConfig(_Base):
+    C: float = Field(1.0, gt=0, description="Inverse L2 regularization strength.")
+    max_iter: int = Field(1000, gt=0)
+
+
+class ModelsConfig(_Base):
+    seed: int = 42
+    calibration_bins: int = Field(10, gt=1)
+    logistic: LogisticModelConfig = Field(default_factory=LogisticModelConfig)
+
+
 class PathsConfig(_Base):
     data_raw: str = "data/raw"
     data_normalized: str = "data/normalized"
     data_processed: str = "data/processed"
     data_events: str = "data/events"
+    data_models: str = "data/models"
     reports: str = "reports"
 
     def resolve(self, name: str, root: Path = REPO_ROOT) -> Path:
@@ -158,6 +170,7 @@ class Config(_Base):
     data_source: DataSourceConfig
     splits: SplitsConfig
     missing_data: MissingDataConfig
+    models: ModelsConfig = Field(default_factory=ModelsConfig)
     paths: PathsConfig
     logging: LoggingConfig
 

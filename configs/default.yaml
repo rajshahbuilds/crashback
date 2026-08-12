@@ -50,6 +50,16 @@ splits:
 missing_data:
   policy: flag                              # flag | drop | impute
 
+# ---- Modeling (sections 18-19) ---------------------------------------------------
+# Interpretable stages M0-M3 (STU-59). Logistic pipeline handles missingness internally
+# (median impute + missing-indicator), so this policy stays `flag` for the dataset.
+models:
+  seed: 42
+  calibration_bins: 10
+  logistic:
+    C: 1.0                                  # inverse L2 strength
+    max_iter: 1000
+
 # ---- Filesystem layout -----------------------------------------------------------
 paths:
   data_raw: data/raw

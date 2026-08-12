@@ -16,6 +16,7 @@ data/raw/*
 data/normalized/*
 data/processed/*
 data/events/*
+data/models/*
 !data/**/.gitkeep
 *.parquet
 
