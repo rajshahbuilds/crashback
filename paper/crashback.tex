@@ -433,4 +433,106 @@ $28{,}759$ events). Median $-13\%$, mean $+5\%$; $42\%$ earn money.}
 \label{fig:pe-expensive}
 \end{figure}
 
+\subsection{A Common Pattern Across Six Further Features}
+
+We close the descriptive screen with six more features and present them together
+because they tell one story. Across pre-crash momentum, market beta, profitability,
+revenue growth, and both absolute and sector-relative market context, the same axis
+recurs: crashes in \emph{speculative, idiosyncratic} situations tend to keep falling,
+while crashes that are \emph{cheap, profitable, or part of a broad move} tend to
+recover. Each feature is bucketed into fixed ranges, and each panel is a one-year return
+histogram in the format of Section~\ref{sec:m0}.
+
+\paragraph{Pre-crash momentum.} Bucketing by the stock's return over the year
+\emph{before} the crash (Figures~\ref{fig:premom-dn}--\ref{fig:premom-hot}) reveals a
+reversal effect: prior big winners fare worst. Stocks up more than $50\%$ going in
+recover only $37\%$ of the time (median $-20\%$), while those that had drifted mildly
+lower recover best ($55\%$, median $+7\%$). A crash that interrupts a strong run tends to
+be the start of a de-rating.
+
+\begin{figure}[H]\centering\includegraphics[width=0.8\textwidth]{figures/recovery_hist_premom_dn.pdf}
+\caption{Pre-crash one-year return below $-50\%$ ($34{,}325$ events). Median $+1\%$; $50\%$ earn money.}\label{fig:premom-dn}\end{figure}
+\begin{figure}[H]\centering\includegraphics[width=0.8\textwidth]{figures/recovery_hist_premom_mild.pdf}
+\caption{Pre-crash one-year return $-50$ to $0\%$ ($74{,}244$ events). Median $+7\%$; $55\%$ earn money---the best of the four.}\label{fig:premom-mild}\end{figure}
+\begin{figure}[H]\centering\includegraphics[width=0.8\textwidth]{figures/recovery_hist_premom_up.pdf}
+\caption{Pre-crash one-year return $0$ to $+50\%$ ($38{,}646$ events). Median $+2\%$; $52\%$ earn money.}\label{fig:premom-up}\end{figure}
+\begin{figure}[H]\centering\includegraphics[width=0.8\textwidth]{figures/recovery_hist_premom_hot.pdf}
+\caption{Pre-crash one-year return above $+50\%$ ($47{,}332$ events). Median $-20\%$; only $37\%$ earn money---prior winners fare worst.}\label{fig:premom-hot}\end{figure}
+
+\paragraph{Beta.} Market beta over the prior year (Figures~\ref{fig:beta-lo}--\ref{fig:beta-vhi})
+tells the same story through volatility. Very-high-beta stocks ($\beta>1.8$) recover only
+$37\%$ of the time (median $-23\%$); market-like names ($\beta\approx1$) do best ($55\%$,
+median $+6\%$). Beyond a point, higher systematic risk maps to worse, not better, recovery.
+
+\begin{figure}[H]\centering\includegraphics[width=0.8\textwidth]{figures/recovery_hist_beta_lo.pdf}
+\caption{$\beta<0.8$ (defensive; $59{,}947$ events). Median $+2\%$; $51\%$ earn money.}\label{fig:beta-lo}\end{figure}
+\begin{figure}[H]\centering\includegraphics[width=0.8\textwidth]{figures/recovery_hist_beta_mkt.pdf}
+\caption{$\beta$ $0.8$--$1.2$ (market-like; $47{,}092$ events). Median $+6\%$; $55\%$ earn money.}\label{fig:beta-mkt}\end{figure}
+\begin{figure}[H]\centering\includegraphics[width=0.8\textwidth]{figures/recovery_hist_beta_hi.pdf}
+\caption{$\beta$ $1.2$--$1.8$ (high; $67{,}983$ events). Median $+4\%$; $52\%$ earn money.}\label{fig:beta-hi}\end{figure}
+\begin{figure}[H]\centering\includegraphics[width=0.8\textwidth]{figures/recovery_hist_beta_vhi.pdf}
+\caption{$\beta>1.8$ (very high; $67{,}814$ events). Median $-23\%$; only $37\%$ earn money.}\label{fig:beta-vhi}\end{figure}
+
+\paragraph{Profitability (EBITDA margin).} Operating profitability produces the single
+worst slice in the paper (Figures~\ref{fig:ebm-neg}--\ref{fig:ebm-hi}): companies with
+negative EBITDA margins earn money only $30\%$ of the time after a crash, with a median
+one-year return of $-38\%$. Recovery then rises monotonically with margin, to $57\%$
+(median $+10\%$) above $25\%$. Losing money operationally makes a crash far more likely to
+be terminal.
+
+\begin{figure}[H]\centering\includegraphics[width=0.8\textwidth]{figures/recovery_hist_ebm_neg.pdf}
+\caption{EBITDA margin $<0$ ($45{,}843$ events). Median $-38\%$; only $30\%$ earn money---the worst slice in the paper.}\label{fig:ebm-neg}\end{figure}
+\begin{figure}[H]\centering\includegraphics[width=0.8\textwidth]{figures/recovery_hist_ebm_lo.pdf}
+\caption{EBITDA margin $0$--$10\%$ ($38{,}789$ events). Median $0\%$; $50\%$ earn money.}\label{fig:ebm-lo}\end{figure}
+\begin{figure}[H]\centering\includegraphics[width=0.8\textwidth]{figures/recovery_hist_ebm_mid.pdf}
+\caption{EBITDA margin $10$--$25\%$ ($52{,}045$ events). Median $+4\%$; $53\%$ earn money.}\label{fig:ebm-mid}\end{figure}
+\begin{figure}[H]\centering\includegraphics[width=0.8\textwidth]{figures/recovery_hist_ebm_hi.pdf}
+\caption{EBITDA margin $>25\%$ ($28{,}077$ events). Median $+10\%$; $57\%$ earn money.}\label{fig:ebm-hi}\end{figure}
+
+\paragraph{Revenue growth.} Year-over-year revenue growth
+(Figures~\ref{fig:revg-dn}--\ref{fig:revg-hi}) echoes valuation: hyper-growth firms
+($>30\%$) recover worst ($36\%$, median $-25\%$), moderate growers ($0$--$10\%$) best
+($58\%$, median $+11\%$). Together with the P/E and momentum results, this marks
+expensive, high-expectation growth stocks as the most fragile after a crash.
+
+\begin{figure}[H]\centering\includegraphics[width=0.8\textwidth]{figures/recovery_hist_revg_dn.pdf}
+\caption{Revenue declining year-over-year ($52{,}281$ events). Median $-3\%$; $48\%$ earn money.}\label{fig:revg-dn}\end{figure}
+\begin{figure}[H]\centering\includegraphics[width=0.8\textwidth]{figures/recovery_hist_revg_lo.pdf}
+\caption{Revenue growth $0$--$10\%$ ($26{,}743$ events). Median $+11\%$; $58\%$ earn money---the best.}\label{fig:revg-lo}\end{figure}
+\begin{figure}[H]\centering\includegraphics[width=0.8\textwidth]{figures/recovery_hist_revg_mid.pdf}
+\caption{Revenue growth $10$--$30\%$ ($37{,}396$ events). Median $+5\%$; $54\%$ earn money.}\label{fig:revg-mid}\end{figure}
+\begin{figure}[H]\centering\includegraphics[width=0.8\textwidth]{figures/recovery_hist_revg_hi.pdf}
+\caption{Revenue growth $>30\%$ ($67{,}818$ events). Median $-25\%$; only $36\%$ earn money.}\label{fig:revg-hi}\end{figure}
+
+\paragraph{Market context.} The broad market's trailing $20$-day return around the crash
+(Figures~\ref{fig:mkt-crash}--\ref{fig:mkt-up}) is one of the strongest signals here, and
+it inverts the intuition: crashes that occur while the whole market is already down more
+than $10\%$ recover best of all ($63\%$, median $+19\%$), while crashes struck in a calm
+or rising market recover poorly ($\sim43\%$, median $\sim-10\%$). A stock swept down in a
+market-wide rout is far more recoverable than one that fell on its own.
+
+\begin{figure}[H]\centering\includegraphics[width=0.8\textwidth]{figures/recovery_hist_mkt_crash.pdf}
+\caption{Market $20$-day return $<-10\%$ ($52{,}517$ events). Median $+19\%$; $63\%$ earn money---the strongest single bucket.}\label{fig:mkt-crash}\end{figure}
+\begin{figure}[H]\centering\includegraphics[width=0.8\textwidth]{figures/recovery_hist_mkt_dn.pdf}
+\caption{Market $20$-day return $-10$ to $-3\%$ ($55{,}115$ events). Median $-12\%$; $43\%$ earn money.}\label{fig:mkt-dn}\end{figure}
+\begin{figure}[H]\centering\includegraphics[width=0.8\textwidth]{figures/recovery_hist_mkt_flat.pdf}
+\caption{Market $20$-day return $-3$ to $0\%$ ($34{,}851$ events). Median $-11\%$; $43\%$ earn money.}\label{fig:mkt-flat}\end{figure}
+\begin{figure}[H]\centering\includegraphics[width=0.8\textwidth]{figures/recovery_hist_mkt_up.pdf}
+\caption{Market $20$-day return $>0\%$ ($120{,}416$ events). Median $-10\%$; $43\%$ earn money.}\label{fig:mkt-up}\end{figure}
+
+\paragraph{Performance relative to sector.} The same idea sharpens when we compare the
+stock to its sector on the crash day (Figures~\ref{fig:relsec-worse}--\ref{fig:relsec-with}).
+Stocks that fell far more than their sector---an idiosyncratic, company-specific
+crash---recover only $44\%$ of the time (median $-9\%$); the rare stocks that fell roughly
+\emph{with} or less than their sector recover $75\%$ of the time (median $+34\%$). Whether
+a crash is company-specific or sector-wide is among the most discriminating facts about it,
+and it foreshadows why market and sector context dominate the predictive models.
+
+\begin{figure}[H]\centering\includegraphics[width=0.8\textwidth]{figures/recovery_hist_relsec_worse.pdf}
+\caption{Crashed far worse than sector (stock minus sector $<-10\%$; $178{,}426$ events). Median $-9\%$; $44\%$ earn money.}\label{fig:relsec-worse}\end{figure}
+\begin{figure}[H]\centering\includegraphics[width=0.8\textwidth]{figures/recovery_hist_relsec_mid.pdf}
+\caption{Crashed moderately worse than sector ($-10$ to $-3\%$; $76{,}451$ events). Median $+2\%$; $51\%$ earn money.}\label{fig:relsec-mid}\end{figure}
+\begin{figure}[H]\centering\includegraphics[width=0.8\textwidth]{figures/recovery_hist_relsec_with.pdf}
+\caption{Crashed with or better than sector ($>-3\%$; $7{,}668$ events). Median $+34\%$; $75\%$ earn money---the clearest recovery signal in the section.}\label{fig:relsec-with}\end{figure}
+
 \end{document}
