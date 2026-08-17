@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Figure: one-year recovery rate by market-cap decile (feature-correlation section).
+"""Figures: one-year return distribution by market-cap range (feature-correlation section).
 
-Joins the survivorship-safe one-year outcome to each event's point-in-time market cap (crash-day
-close x latest shares), buckets into deciles, and plots P(earn money) per decile against the
-unconditional base rate. Reveals a U-shaped relationship: nano-caps and large caps recover more
-often than the mid-caps between them.
+Joins the survivorship-safe one-year outcome to each event's point-in-time market cap, splits into
+size ranges, and renders one baseline-style return histogram per range (identical structure to the
+Model 0 histograms). Shows how the distribution's shape shifts with company size.
 
 Run: PYTHONPATH=src .venv/bin/python scripts/fig_recovery_by_marketcap.py
 """
@@ -12,69 +11,36 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import matplotlib
 import polars as pl
 
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
+from crashback.analysis.plots import ONE_YEAR, return_histogram
+from crashback.analysis.recovery import one_year_returns
+from crashback.config import load_config
 
-from crashback.analysis.recovery import one_year_returns  # noqa: E402
-from crashback.config import load_config  # noqa: E402
-
-BAR, INK, MUTED, REF = "#4C72B0", "#222222", "#8A8A8A", "#C44E52"
-
-
-def _sz(m):  # market cap ($M) -> short label
-    return f"${m / 1000:.1f}B" if m >= 1000 else f"${m:.0f}M"
+# (label for the figure, file, lo $M inclusive, hi $M exclusive)
+RANGES = [
+    ("micro-cap (< $100M)", "recovery_hist_mcap_micro.pdf", 0, 100),
+    ("small-cap ($100M–$1B)", "recovery_hist_mcap_small.pdf", 100, 1_000),
+    ("mid/large-cap ($1B–$10B)", "recovery_hist_mcap_midlarge.pdf", 1_000, 10_000),
+    ("mega-cap (> $10B)", "recovery_hist_mcap_mega.pdf", 10_000, 1e12),
+]
 
 
 def main():
     cfg = load_config()
+    figdir = Path("paper/figures")
     ret = one_year_returns(cfg)
     mc = pl.read_parquet(cfg.paths.resolve("data_processed") / "events_v1.parquet").select(
         "event_id", "market_cap")
     d = ret.join(mc, on="event_id").filter(
         pl.col("market_cap").is_not_null() & (pl.col("market_cap") > 0))
-    base = float((d["ret"] > 0).mean())
-    d = d.with_columns(dec=(pl.col("market_cap").rank("ordinal") / pl.len() * 10)
-                       .ceil().clip(1, 10).cast(pl.Int64))
-    g = (d.group_by("dec").agg(n=pl.len(), p_earn=(pl.col("ret") > 0).mean(),
-                               med_ret=pl.col("ret").median(),
-                               med_mc=pl.col("market_cap").median()).sort("dec"))
-    dec = g["dec"].to_numpy()
-    pe = g["p_earn"].to_numpy() * 100
-    print(f"events={d.height:,}  base P(earn)={base:.3f}")
-    for r in g.iter_rows(named=True):
-        print(f"  d{r['dec']:2d} n={r['n']:5d}  size~{_sz(r['med_mc']):>7s}  "
-              f"P(earn)={r['p_earn']:.3f}  med_ret={r['med_ret']:+.3f}")
 
-    fig, ax = plt.subplots(figsize=(6.4, 3.5))
-    ax.bar(dec, pe, color=BAR, edgecolor="white", width=0.8, zorder=2)
-    ax.axhline(base * 100, color=REF, lw=1.3, ls="--", zorder=3)
-    ax.text(10.4, base * 100, f"base rate {base:.0%}", color=REF, fontsize=8.5,
-            va="center", ha="left")
-
-    ax.set_xticks(dec)
-    ax.set_xticklabels([str(i) for i in dec])
-    ax.set_xlabel("Market-cap decile (1 = smallest, 10 = largest)")
-    ax.set_ylabel("P(earn money in one year)  (%)")
-    ax.set_ylim(40, 54)
-    ax.annotate(_sz(g["med_mc"][0]), xy=(1, pe[0]), xytext=(1, 41.2),
-                ha="center", fontsize=7.5, color=MUTED)
-    ax.annotate(_sz(g["med_mc"][-1]), xy=(10, pe[-1]), xytext=(10, 41.2),
-                ha="center", fontsize=7.5, color=MUTED)
-    ax.grid(axis="y", color=MUTED, alpha=0.25, lw=0.5, zorder=0)
-    for s in ("top", "right"):
-        ax.spines[s].set_visible(False)
-    for s in ("left", "bottom"):
-        ax.spines[s].set_color(MUTED)
-    ax.tick_params(colors=INK, labelsize=8)
-    ax.set_xlim(0.4, 11.4)
-    fig.tight_layout()
-    out = Path("paper/figures/recovery_by_marketcap.pdf")
-    out.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out, bbox_inches="tight")
-    print(f"wrote {out}")
+    spec = {**ONE_YEAR, "label": "one-year"}
+    for label, file, lo, hi in RANGES:
+        r = d.filter((pl.col("market_cap") >= lo) & (pl.col("market_cap") < hi))["ret"].to_numpy()
+        med, mean, p_earn, n = return_histogram(r, spec, figdir / file, title=label)
+        print(f"{label:26s}: n={n:6d}  P(earn)={p_earn:.3f}  median={med:+.3f}  "
+              f"mean={mean:+.3f}  -> {file}")
 
 
 if __name__ == "__main__":

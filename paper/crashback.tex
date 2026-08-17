@@ -176,31 +176,55 @@ begin with company size.
 
 \paragraph{Market capitalization.} We measure size by the point-in-time market
 capitalization at the event (the crash-day close times the latest known shares
-outstanding), available for $78\%$ of observed events, and sort events into deciles.
-Figure~\ref{fig:mcap} plots the one-year recovery rate within each decile against the
-unconditional base rate. The relationship is \emph{U-shaped} rather than monotone. The
-largest-cap crashes recover most often ($51\%$ at a median size of $\sim\$5$B), the
-mid-caps least ($43$--$44\%$ from roughly $\$70$M to $\$450$M), and the smallest
-nano-caps are anomalously elevated ($49\%$ at $\sim\$17$M). The median one-year return
-traces the same shape, from about $-10\%$ in the middle to $+2\%$ in the top decile.
+outstanding), available for $78\%$ of observed events, and split the sample into four
+size ranges. Figures~\ref{fig:mcap-micro}--\ref{fig:mcap-mega} show the one-year return
+distribution within each range, using the same construction as the Model~0 histograms.
+The distribution shifts steadily to the right as size increases: the median one-year
+return rises from $-10\%$ for small-caps to $+7\%$ for mega-caps, the mean from $+8\%$
+to $+12\%$, and the share of crashes that earn money from $44\%$ to $55\%$. Only among
+the largest firms does the median crash actually recover to a profit within a year.
 
 A plausible reading is that large, established firms are more likely to survive and
-mean-revert; mid-cap ``fallen angels'' tend to grind lower; and nano-caps behave like
-lottery tickets---their extreme volatility produces both a fat right tail and frequent
-positive years, albeit alongside high failure risk. The effect is real but modest (an
-$8$-point spread in recovery rate across the size range) and, being univariate, is
-confounded with market regime, sector, and price level. As later sections show, size
-adds little once price behavior and market context are modeled; its value here is as a
-first, interpretable marker that recovery odds are not uniform across the cross-section.
+mean-revert, whereas smaller companies are both more likely to keep sliding and more
+likely to be delisted---their distributions are wider on both sides but centered lower.
+The effect is real but modest (an $11$-point spread in recovery rate across the size
+range) and, being univariate, is confounded with market regime, sector, and price
+level. As later sections show, size adds little once price behavior and market context
+are modeled; its value here is as a first, interpretable marker that recovery odds are
+not uniform across the cross-section.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\textwidth]{figures/recovery_by_marketcap.pdf}
-\caption{One-year recovery rate (probability of a positive return) by market-cap
-decile, over $203{,}775$ observed events with a point-in-time market cap. The dashed
-line is the unconditional base rate. Recovery is U-shaped in size: highest for the
-largest caps, lowest for mid-caps, with a nano-cap uptick.}
-\label{fig:mcap}
+\includegraphics[width=0.8\textwidth]{figures/recovery_hist_mcap_micro.pdf}
+\caption{One-year return distribution for micro-cap crashes ($<\$100$M; $64{,}687$
+events). Median $-6\%$, mean $+8\%$; $45\%$ earn money.}
+\label{fig:mcap-micro}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/recovery_hist_mcap_small.pdf}
+\caption{One-year return distribution for small-cap crashes ($\$100$M--$\$1$B;
+$97{,}806$ events). Median $-10\%$, mean $+10\%$; $44\%$ earn money---the lowest
+recovery rate of the four ranges.}
+\label{fig:mcap-small}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/recovery_hist_mcap_midlarge.pdf}
+\caption{One-year return distribution for mid/large-cap crashes ($\$1$B--$\$10$B;
+$36{,}348$ events). Median $-1\%$, mean $+13\%$; $50\%$ earn money.}
+\label{fig:mcap-midlarge}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/recovery_hist_mcap_mega.pdf}
+\caption{One-year return distribution for mega-cap crashes ($>\$10$B; $4{,}934$
+events). Median $+7\%$, mean $+12\%$; $55\%$ earn money---the only range whose median
+crash recovers to a profit.}
+\label{fig:mcap-mega}
 \end{figure}
 
 \end{document}

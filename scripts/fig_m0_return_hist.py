@@ -3,8 +3,8 @@
 
 Survivorship-safe returns from the crash-day close (compounded total daily returns, so splits,
 dividends, and delisting/bankruptcy terminal returns are all included); crashes without a full
-forward window before the data edge are censored. One histogram per horizon, rendered to vector
-PDF; break-even, median, and mean are marked. Long right tails are clipped into an overflow bin.
+forward window before the data edge are censored. One histogram per horizon (60-day, full-history
+year, 2010-onward year), rendered via the shared baseline histogram.
 
 Run: PYTHONPATH=src .venv/bin/python scripts/fig_m0_return_hist.py
 """
@@ -13,30 +13,21 @@ from __future__ import annotations
 from datetime import date, timedelta
 from pathlib import Path
 
-import matplotlib
 import numpy as np
 import polars as pl
 
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
-
-from crashback.config import load_config  # noqa: E402
-from crashback.ingestion.prices import scan_daily_prices  # noqa: E402
-
-BAR, INK, MUTED = "#4C72B0", "#222222", "#8A8A8A"
-RED, GREEN = "#C44E52", "#55A868"
-
-_YR = {"lo": -1.0, "hi": 2.0, "bin": 0.10, "ticks": [-1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0],
-       "ticklabels": ["-100%", "-50%", "0", "+50%", "+100%", "+150%", "≥+200%"]}
+from crashback.analysis.plots import ONE_YEAR, return_histogram
+from crashback.config import load_config
+from crashback.ingestion.prices import scan_daily_prices
 
 # figures to render: horizon (trading days), optional crash-date floor, display config
 SPECS = [
     {"horizon": 60, "since": None, "label": "60-day", "file": "m0_return_hist_60d.pdf",
      "lo": -1.0, "hi": 1.0, "bin": 0.05, "ticks": [-1.0, -0.5, 0.0, 0.5, 1.0],
      "ticklabels": ["-100%", "-50%", "0", "+50%", "≥+100%"]},
-    {"horizon": 252, "since": None, "label": "one-year", "file": "m0_return_hist.pdf", **_YR},
+    {"horizon": 252, "since": None, "label": "one-year", "file": "m0_return_hist.pdf", **ONE_YEAR},
     {"horizon": 252, "since": date(2010, 1, 1), "label": "one-year (2010–2025)",
-     "file": "m0_return_hist_2010.pdf", **_YR},
+     "file": "m0_return_hist_2010.pdf", **ONE_YEAR},
 ]
 
 
@@ -80,54 +71,13 @@ def forward_returns(ev, px, horizon: int, since: date | None = None) -> np.ndarr
     return e.filter(~pl.col("censored") & pl.col("ret").is_not_null())["ret"].to_numpy()
 
 
-def render(r: np.ndarray, cfg_h: dict, out: Path):
-    med, mean, p_earn = float(np.median(r)), float(r.mean()), float((r > 0).mean())
-    lo, hi = cfg_h["lo"], cfg_h["hi"]
-    rc = np.clip(r, lo, hi)
-    bins = np.arange(lo, hi + 1e-9, cfg_h["bin"])
-
-    fig, ax = plt.subplots(figsize=(6.4, 3.6))
-    ax.hist(rc, bins=bins, weights=np.full(len(rc), 100.0 / len(rc)),
-            color=BAR, edgecolor="white", linewidth=0.4)
-    ax.set_ylim(0, ax.get_ylim()[1] * 1.18)
-    ytop = ax.get_ylim()[1]
-    ax.axvline(0.0, color=INK, lw=1.4)
-    ax.axvline(med, color=RED, lw=1.4, ls="--")
-    ax.axvline(mean, color=GREEN, lw=1.4, ls="--")
-    ax.text(0.0, ytop * 0.995, "break-even", color=INK, fontsize=8, ha="center", va="top")
-    ax.annotate(f"median {med:+.0%}", xy=(med, ytop * 0.62),
-                xytext=(lo * 0.78, ytop * 0.80), color=RED, fontsize=8.5, va="center",
-                arrowprops={"arrowstyle": "-", "color": RED, "lw": 0.8})
-    ax.annotate(f"mean {mean:+.0%}", xy=(mean, ytop * 0.55),
-                xytext=(hi * 0.30, ytop * 0.88), color=GREEN, fontsize=8.5, va="center",
-                arrowprops={"arrowstyle": "-", "color": GREEN, "lw": 0.8})
-    ax.text(0.97, 0.74, f"earns money: {p_earn:.0%}\nloses money: {1 - p_earn:.0%}",
-            transform=ax.transAxes, ha="right", va="top", fontsize=9, color=INK)
-    ax.set_xlim(lo, hi)
-    ax.set_xticks(cfg_h["ticks"])
-    ax.set_xticklabels(cfg_h["ticklabels"])
-    ax.set_xlabel(f"{cfg_h['label'].capitalize()} total return after the crash")
-    ax.set_ylabel("Share of crash events (%)")
-    ax.grid(axis="y", color=MUTED, alpha=0.25, lw=0.5)
-    for s in ("top", "right"):
-        ax.spines[s].set_visible(False)
-    for s in ("left", "bottom"):
-        ax.spines[s].set_color(MUTED)
-    ax.tick_params(colors=INK, labelsize=8)
-    fig.tight_layout()
-    out.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out, bbox_inches="tight")
-    plt.close(fig)
-    return med, mean, p_earn, len(r)
-
-
 def main():
     cfg = load_config()
     figdir = Path("paper/figures")
     ev, px = _prices(cfg)
     for spec in SPECS:
         r = forward_returns(ev, px, spec["horizon"], spec["since"])
-        med, mean, p_earn, n = render(r, spec, figdir / spec["file"])
+        med, mean, p_earn, n = return_histogram(r, spec, figdir / spec["file"])
         print(f"{spec['label']:22s} (h={spec['horizon']}): n={n:,}  P(earn)={p_earn:.3f}  "
               f"median={med:+.3f}  mean={mean:+.3f}  -> {spec['file']}")
 
