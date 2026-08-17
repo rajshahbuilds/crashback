@@ -1,0 +1,85 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+\title{Predicting Short-Term Recovery After Large Stock-Price Crashes}
+\author{Studio R42}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Motivation}
+
+After a large single-day decline, some stocks rebound within weeks while others
+keep falling. We ask a single question: at the moment a stock crashes, using only
+information available at that time, can we predict \emph{which} stocks recover, by
+how much, and how quickly? A crash is defined as a daily adjusted return of
+$-10\%$ or worse, and every qualifying day is treated as its own prediction event
+(no cooldown or future-dependent suppression), which reproduces the information set
+a forecaster would actually face in real time.
+
+The underlying hypothesis is that a crash reflects one of two very different things:
+temporary, overreaction-driven price damage, or genuine long-term fundamental
+damage. If the two are separable from contemporaneous information, then recovery
+should be predictable above its base rate. We therefore frame the problem as
+\emph{calibrated probability prediction} rather than as a trading system: the
+priority is a defensible, leakage-free historical dataset, honest base rates, and a
+measurement of whether successive information sources---price behavior, market and
+sector context, point-in-time fundamentals, and later contemporaneous
+filings---add predictive value. Concretely, the primary target is the probability
+that a stock's close reaches at least $+10\%$ above its crash-day close at some
+point within the next $20$ trading days.
+
+\section{Data}
+
+All market data come from Wharton Research Data Services (WRDS): CRSP for
+securities, prices, and delistings, and Compustat for fundamentals. To avoid
+survivorship bias, the universe is built from the full historical cross-section of
+US-listed common stock---including securities that were later delisted, acquired,
+renamed, or went bankrupt---rather than from today's survivors. We restrict to
+common shares on NYSE, NYSE American, and Nasdaq and exclude ETFs, funds, ADRs,
+warrants, and preferred shares.
+
+We use the CRSP CIZ tables: daily prices (\texttt{dsf\_v2}), the historical security
+master with full ticker history (\texttt{stocknames\_v2}), and delisting records
+(\texttt{dsedelist}). Crash detection uses total returns (split- and
+dividend-adjusted) so that corporate actions cannot manufacture false crashes, and
+delisting returns are preserved so that terminal outcomes (e.g.\ bankruptcies) are
+recorded rather than silently dropped. Fundamentals come from Compustat's unrestated
+quarterly data (\texttt{comp\_urq}), dated by \emph{public availability} (the report
+date, \texttt{rdq}) rather than by fiscal period end, so a quarter's figures only
+become a feature after they were actually released. CRSP and Compustat are linked
+through \texttt{ccmxpf\_lnkhist} (\texttt{permno}$\leftrightarrow$\texttt{gvkey}). For
+the V2 extension, contemporaneous SEC filings are retrieved from EDGAR and keyed by
+each filing's exact acceptance timestamp, so that only documents public by the
+crash-day close are admissible.
+
+Every feature is required to be knowable by the prediction timestamp (the crash-day
+close), and provider-specific fields are normalized into canonical schemas as early
+as possible so that downstream stages depend only on the schema, not on the vendor.
+Table~\ref{tab:data} summarizes the resulting dataset.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lr}
+\toprule
+Quantity & Value \\
+\midrule
+Securities (survivorship-safe) & 27{,}363 \\
+\quad active / delisted & 4{,}171 / 23{,}192 \\
+Daily price observations & $\sim$85.3 million \\
+Coverage & 1925--2025 \\
+Crash events (daily return $\le -10\%$) & 1{,}153{,}414 \\
+\quad in liquid study pool & $\sim$268{,}000 \\
+\bottomrule
+\end{tabular}
+\caption{Dataset summary. The liquid study pool applies point-in-time universe and
+minimum-price filters computed only from information available at the event.}
+\label{tab:data}
+\end{table}
+
+\end{document}

@@ -26,3 +26,9 @@ reports/wrds_validation.json
 
 # OS
 .DS_Store
+
+# LaTeX build artifacts
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.pdf
