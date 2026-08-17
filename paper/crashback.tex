@@ -82,4 +82,49 @@ minimum-price filters computed only from information available at the event.}
 \label{tab:data}
 \end{table}
 
+\section{Model 0: The Base Rate}
+
+Before using any features, we establish the unconditional benchmark: ignore
+everything about the crash and predict the same recovery probability for every event.
+This is Model 0, and it is the bar that any feature-based model must clear. For this
+baseline we adopt the plainest notion of recovery---\emph{earning money one year
+later}---defined as a positive total holding return over the $252$ trading days
+following the crash-day close.
+
+The one-year return is computed survivorship-safely by compounding total daily
+returns over that window, so stock splits, dividends, and delisting or bankruptcy
+terminal returns are all reflected in the outcome; a crashed stock that is delisted
+within the year contributes its realized (often near-total) loss rather than
+disappearing from the sample. Crashes occurring within one trading year of the data
+edge cannot be observed for a full year and are censored rather than labeled. This
+leaves $262{,}906$ observed one-year outcomes in the liquid study pool.
+
+The result is shown in Table~\ref{tab:m0}. After a crash, an investor earns money one
+year later only $46.9\%$ of the time---less than a coin flip. The distribution is
+strongly right-skewed: the \emph{mean} one-year return is positive ($+10.2\%$), but
+the \emph{median} is negative ($-4.6\%$), and more than one crash in five loses at
+least half its value. In other words, ``buy the dip'' at the one-year horizon is, on
+average, a losing proposition for the typical stock; the positive mean is driven by a
+minority of large recoverers, not by the median outcome. This is precisely the gap
+that a predictive model must exploit---separating that recovering minority from the
+majority that continues to decline.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lr}
+\toprule
+One-year outcome after a crash & Value \\
+\midrule
+$P(\text{earn money, return} > 0)$ & $46.9\%$ \\
+$P(\text{return} \ge +10\%)$ & $40.6\%$ \\
+$P(\text{return} \le -50\%)$ & $21.7\%$ \\
+Mean return & $+10.2\%$ \\
+Median return & $-4.6\%$ \\
+\bottomrule
+\end{tabular}
+\caption{Model 0 base rate over $262{,}906$ observed one-year outcomes (liquid study
+pool, delisting-inclusive, recent crashes censored).}
+\label{tab:m0}
+\end{table}
+
 \end{document}
