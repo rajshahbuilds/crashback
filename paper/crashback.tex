@@ -369,4 +369,68 @@ money---the lowest recovery rate and widest distribution of any slice examined.}
 \label{fig:prior-2}
 \end{figure}
 
+\paragraph{Valuation (P/E).} The features above are all derived from price and trading
+behavior; valuation is our one fundamental screen. We compute each event's
+price-to-earnings ratio at the crash---the crash-day market capitalization over
+trailing-twelve-month net income---and group events into unprofitable firms (negative
+earnings, hence no meaningful P/E) and three valuation tiers among profitable firms:
+cheap ($0<\text{P/E}\le 15$), fair ($15<\text{P/E}\le 30$), and expensive
+($\text{P/E}>30$). A P/E is available for $74\%$ of observed events;
+Figures~\ref{fig:pe-unprofitable}--\ref{fig:pe-expensive} show the one-year return
+distribution for each group.
+
+This is the sharpest relationship in the section. Unprofitable companies fare
+disastrously: a median one-year return of $-28\%$, only $35\%$ earning money, and a
+\emph{negative} mean---the sole slice in this paper whose average crash loses money over
+the following year. Among profitable firms, cheaper is dramatically better: cheap stocks
+recover strongly ($61\%$ earn money, median $+16\%$, mean $+31\%$), fair-valued ones
+modestly ($52\%$, median $+2\%$), and expensive ones poorly ($42\%$, median $-13\%$).
+The spread---from $35\%$ to $61\%$ in recovery rate---is by far the widest we observe. A
+crash in a cheap, profitable company looks like an overreaction that tends to reverse; a
+crash in an unprofitable or richly-valued one looks like the start of a longer decline.
+
+Two caveats temper this striking result. First, valuation is heavily confounded with
+size and quality: unprofitable firms are disproportionately micro-caps, so this screen
+partly re-expresses the size effect. Second, and importantly, the association is a
+\emph{long-horizon} one. The predictive models developed later target a much shorter
+($20$-trading-day) recovery, and over that window fundamentals---valuation
+included---add little; value reversion after a crash is a slow process that plays out
+over months, not weeks. Valuation thus looks powerful for the one-year question studied
+here yet nearly irrelevant for short-term rebound prediction, a horizon distinction we
+return to in the modeling results.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/recovery_hist_pe_unprofitable.pdf}
+\caption{One-year return distribution for unprofitable crashers (negative trailing
+earnings; $85{,}613$ events). Median $-28\%$, mean $-3\%$; only $35\%$ earn money---the
+worst outcomes of any slice, and the only one with a negative mean.}
+\label{fig:pe-unprofitable}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/recovery_hist_pe_cheap.pdf}
+\caption{One-year return distribution for cheap profitable crashers ($0<\text{P/E}\le
+15$; $49{,}422$ events). Median $+16\%$, mean $+31\%$; $61\%$ earn money---the strongest
+recovery of any slice.}
+\label{fig:pe-cheap}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/recovery_hist_pe_fair.pdf}
+\caption{One-year return distribution for fair-valued crashers ($15<\text{P/E}\le 30$;
+$30{,}067$ events). Median $+2\%$, mean $+14\%$; $52\%$ earn money.}
+\label{fig:pe-fair}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/recovery_hist_pe_expensive.pdf}
+\caption{One-year return distribution for expensive crashers ($\text{P/E}>30$;
+$28{,}759$ events). Median $-13\%$, mean $+5\%$; $42\%$ earn money.}
+\label{fig:pe-expensive}
+\end{figure}
+
 \end{document}
