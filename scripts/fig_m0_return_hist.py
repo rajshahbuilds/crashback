@@ -10,7 +10,7 @@ Run: PYTHONPATH=src .venv/bin/python scripts/fig_m0_return_hist.py
 """
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import date, timedelta
 from pathlib import Path
 
 import matplotlib
@@ -26,15 +26,18 @@ from crashback.ingestion.prices import scan_daily_prices  # noqa: E402
 BAR, INK, MUTED = "#4C72B0", "#222222", "#8A8A8A"
 RED, GREEN = "#C44E52", "#55A868"
 
-# horizon (trading days) -> display config
-HORIZONS = {
-    60: {"label": "60-day", "file": "m0_return_hist_60d.pdf", "lo": -1.0, "hi": 1.0,
-         "bin": 0.05, "ticks": [-1.0, -0.5, 0.0, 0.5, 1.0],
-         "ticklabels": ["-100%", "-50%", "0", "+50%", "≥+100%"]},
-    252: {"label": "one-year", "file": "m0_return_hist.pdf", "lo": -1.0, "hi": 2.0,
-          "bin": 0.10, "ticks": [-1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0],
-          "ticklabels": ["-100%", "-50%", "0", "+50%", "+100%", "+150%", "≥+200%"]},
-}
+_YR = {"lo": -1.0, "hi": 2.0, "bin": 0.10, "ticks": [-1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0],
+       "ticklabels": ["-100%", "-50%", "0", "+50%", "+100%", "+150%", "≥+200%"]}
+
+# figures to render: horizon (trading days), optional crash-date floor, display config
+SPECS = [
+    {"horizon": 60, "since": None, "label": "60-day", "file": "m0_return_hist_60d.pdf",
+     "lo": -1.0, "hi": 1.0, "bin": 0.05, "ticks": [-1.0, -0.5, 0.0, 0.5, 1.0],
+     "ticklabels": ["-100%", "-50%", "0", "+50%", "≥+100%"]},
+    {"horizon": 252, "since": None, "label": "one-year", "file": "m0_return_hist.pdf", **_YR},
+    {"horizon": 252, "since": date(2010, 1, 1), "label": "one-year (2010–2025)",
+     "file": "m0_return_hist_2010.pdf", **_YR},
+]
 
 
 def _prices(cfg):
@@ -56,7 +59,9 @@ def _prices(cfg):
     return ev, px
 
 
-def forward_returns(ev, px, horizon: int) -> np.ndarray:
+def forward_returns(ev, px, horizon: int, since: date | None = None) -> np.ndarray:
+    if since is not None:
+        ev = ev.filter(pl.col("crash_date") >= since)
     last = px.group_by("security_id").agg(last_idx=pl.col("td_idx").max(),
                                           last_date=pl.col("date").max())
     idx = px.select("security_id", "td_idx", "cumlog")
@@ -120,11 +125,11 @@ def main():
     cfg = load_config()
     figdir = Path("paper/figures")
     ev, px = _prices(cfg)
-    for h, hc in HORIZONS.items():
-        r = forward_returns(ev, px, h)
-        med, mean, p_earn, n = render(r, hc, figdir / hc["file"])
-        print(f"{hc['label']:8s} (h={h}): n={n:,}  P(earn)={p_earn:.3f}  "
-              f"median={med:+.3f}  mean={mean:+.3f}  -> {hc['file']}")
+    for spec in SPECS:
+        r = forward_returns(ev, px, spec["horizon"], spec["since"])
+        med, mean, p_earn, n = render(r, spec, figdir / spec["file"])
+        print(f"{spec['label']:22s} (h={spec['horizon']}): n={n:,}  P(earn)={p_earn:.3f}  "
+              f"median={med:+.3f}  mean={mean:+.3f}  -> {spec['file']}")
 
 
 if __name__ == "__main__":
