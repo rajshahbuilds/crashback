@@ -123,4 +123,25 @@ edge censored). The median return (dashed, red) falls below break-even while the
 \label{fig:m0}
 \end{figure}
 
+The picture is strongly horizon-dependent. At a shorter $60$-trading-day
+(roughly three-month) window (Figure~\ref{fig:m0-60d}), the outcome is closer to a
+coin flip: $49.7\%$ of crashes earn money, with a median essentially at break-even
+and a mean of only $+3\%$. Extending the horizon to one year does not improve the
+\emph{typical} outcome---it worsens it. As the holding period lengthens the
+distribution fans out: the right tail stretches (winners compound, lifting the mean
+to $+10.2\%$) while the bulk drifts left (the median falls from $0\%$ to $-4.6\%$). A
+crash thus offers a near-even short-term gamble that, for the median stock,
+deteriorates over the following year, even as a widening minority of large recoverers
+pulls the average upward.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/m0_return_hist_60d.pdf}
+\caption{Distribution of $60$-trading-day total returns after a crash ($267{,}113$
+observed events; same survivorship-safe construction as Figure~\ref{fig:m0}). The
+distribution is more symmetric and centered near break-even, with the median and mean
+close to zero. Returns above $+100\%$ are collected in the final bin.}
+\label{fig:m0-60d}
+\end{figure}
+
 \end{document}
