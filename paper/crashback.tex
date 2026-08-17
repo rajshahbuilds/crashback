@@ -322,4 +322,51 @@ mean $+3\%$; $49\%$ earn money---barely different from milder crashes at this ho
 \label{fig:sev-30-60}
 \end{figure}
 
+\paragraph{Prior-crash history.} A stock's recent crash history is the last feature we
+screen and, foreshadowing the models, the most informative. We classify each event by
+how many crashes the security suffered in the preceding $20$ trading days---today's
+crash never counts as its own prior---into three cohorts: \emph{fresh} (no prior crash;
+$59\%$ of events), \emph{one prior} ($22\%$), and \emph{two or more prior} ($19\%$).
+Figures~\ref{fig:prior-0}--\ref{fig:prior-2} show the one-year return distribution for
+each. The relationship is the strongest we have seen: the median one-year return falls
+from $-2\%$ for fresh crashes to $-7\%$ with one prior crash and $-14\%$ with two or
+more, while the recovery rate drops from $49\%$ to $43\%$. Repeatedly crashing over a
+few weeks is a strong signal of a company in genuine decline, and over a year those
+names keep falling.
+
+As with crash severity, the mean moves the opposite way to the median---rising slightly
+to $+11\%$ for the repeat-crash cohort even as its median collapses---because the
+distribution widens with each additional crash, developing the heaviest left mass and
+the fattest right tail of any slice in this section. Repeat crashers are thus the
+highest-variance bet: most continue to decline, but a minority rebound spectacularly.
+One caution on horizon: this is the one-year picture, and the sign can invert over
+shorter windows, where beaten-down, high-volatility names are unusually prone to a
+near-term technical bounce; recent-crash history accordingly enters the predictive
+models as a powerful but horizon-dependent signal.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/recovery_hist_prior_0.pdf}
+\caption{One-year return distribution for fresh crashes (no prior crash in the previous
+$20$ trading days; $155{,}125$ events). Median $-2\%$, mean $+10\%$; $49\%$ earn money.}
+\label{fig:prior-0}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/recovery_hist_prior_1.pdf}
+\caption{One-year return distribution with exactly one prior crash in the previous $20$
+trading days ($57{,}088$ events). Median $-7\%$, mean $+11\%$; $46\%$ earn money.}
+\label{fig:prior-1}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/recovery_hist_prior_2plus.pdf}
+\caption{One-year return distribution with two or more prior crashes in the previous
+$20$ trading days ($50{,}693$ events). Median $-14\%$, mean $+11\%$; only $43\%$ earn
+money---the lowest recovery rate and widest distribution of any slice examined.}
+\label{fig:prior-2}
+\end{figure}
+
 \end{document}
