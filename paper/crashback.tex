@@ -4,6 +4,7 @@
 \usepackage{amsmath}
 \usepackage{booktabs}
 \usepackage{graphicx}
+\usepackage{float}  % [H] pins figures/tables in place so they never drift past their section
 \usepackage{hyperref}
 
 \title{Predicting Short-Term Recovery After Large Stock-Price Crashes}
@@ -64,7 +65,7 @@ close), and provider-specific fields are normalized into canonical schemas as ea
 as possible so that downstream stages depend only on the schema, not on the vendor.
 Table~\ref{tab:data} summarizes the resulting dataset.
 
-\begin{table}[h]
+\begin{table}[H]
 \centering
 \begin{tabular}{lr}
 \toprule
@@ -111,7 +112,7 @@ the median outcome. This is precisely the gap that a predictive model must
 exploit---separating that recovering minority from the majority that continues to
 decline.
 
-\begin{figure}[h]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.9\textwidth]{figures/m0_return_hist.pdf}
 \caption{Distribution of one-year total returns after a crash, over $262{,}906$
@@ -134,7 +135,7 @@ crash thus offers a near-even short-term gamble that, for the median stock,
 deteriorates over the following year, even as a widening minority of large recoverers
 pulls the average upward.
 
-\begin{figure}[h]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.9\textwidth]{figures/m0_return_hist_60d.pdf}
 \caption{Distribution of $60$-trading-day total returns after a crash ($267{,}113$
@@ -155,7 +156,7 @@ prevailing market regime---a dependence that recurs when we later evaluate predi
 models across time periods. In every era, though, Model~0 remains the benchmark: the
 value of a predictive model is whatever it adds on top of these unconditional rates.
 
-\begin{figure}[h]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.9\textwidth]{figures/m0_return_hist_2010.pdf}
 \caption{One-year total returns after a crash, restricted to crashes from $2010$
@@ -192,7 +193,7 @@ confounded with market regime, sector, and price level. As later sections show, 
 adds little once price behavior and market context are modeled; its value here is as a
 first, interpretable marker that recovery odds are not uniform across the cross-section.
 
-\begin{figure}[h]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.9\textwidth]{figures/recovery_by_marketcap.pdf}
 \caption{One-year recovery rate (probability of a positive return) by market-cap
