@@ -16,18 +16,16 @@ from pathlib import Path
 import numpy as np
 import polars as pl
 
-from crashback.analysis.plots import ONE_YEAR, return_histogram
+from crashback.analysis.plots import ONE_YEAR, SIXTY_DAY, return_histogram
 from crashback.config import load_config
 from crashback.ingestion.prices import scan_daily_prices
 
 # figures to render: horizon (trading days), optional crash-date floor, display config
 SPECS = [
-    {"horizon": 60, "since": None, "label": "60-day", "file": "m0_return_hist_60d.pdf",
-     "lo": -1.0, "hi": 1.0, "bin": 0.05, "ticks": [-1.0, -0.5, 0.0, 0.5, 1.0],
-     "ticklabels": ["-100%", "-50%", "0", "+50%", "≥+100%"]},
-    {"horizon": 252, "since": None, "label": "one-year", "file": "m0_return_hist.pdf", **ONE_YEAR},
-    {"horizon": 252, "since": date(2010, 1, 1), "label": "one-year (2010–2025)",
-     "file": "m0_return_hist_2010.pdf", **ONE_YEAR},
+    {"horizon": 60, "since": None, "file": "m0_return_hist_60d.pdf", **SIXTY_DAY},
+    {"horizon": 252, "since": None, "file": "m0_return_hist.pdf", **ONE_YEAR},
+    {"horizon": 252, "since": date(2010, 1, 1), "file": "m0_return_hist_2010.pdf",
+     **ONE_YEAR, "label": "one-year (2010–2025)"},
 ]
 
 

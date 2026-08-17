@@ -85,6 +85,7 @@ minimum-price filters computed only from information available at the event.}
 \end{table}
 
 \section{Model 0: The Base Rate}
+\label{sec:m0}
 
 Before using any features, we establish the unconditional benchmark: ignore
 everything about the crash and predict the same recovery probability for every event.
@@ -278,6 +279,47 @@ Median $-7\%$, mean $+12\%$; $46\%$ earn money.}
 events). Median $-11\%$, mean $+10\%$; only $43\%$ earn money, the lowest of the four
 bands---yet the widest distribution, with the fattest right tail.}
 \label{fig:sev-30}
+\end{figure}
+
+This severity effect is specific to the one-year horizon. At the shorter $60$-trading-day
+window (Figures~\ref{fig:sev-10-60}--\ref{fig:sev-30-60}), crash depth carries almost no
+signal: every band earns money close to half the time ($48.7$--$49.9\%$) with a median
+essentially at break-even, and the distributions are nearly indistinguishable. The
+``deeper crashes recover worse'' pattern is therefore a slow, long-horizon
+phenomenon---it emerges only as the year unfolds and the hardest-hit companies keep
+declining, echoing the way the return distribution fans out with horizon
+(Section~\ref{sec:m0}).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/recovery_hist_sev_10_15_60d.pdf}
+\caption{$60$-day return distribution after a $10$--$15\%$ crash. Median $0\%$, mean
+$+3\%$; $50\%$ earn money.}
+\label{fig:sev-10-60}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/recovery_hist_sev_15_20_60d.pdf}
+\caption{$60$-day return distribution after a $15$--$20\%$ crash. Median $0\%$, mean
+$+3\%$; $49\%$ earn money.}
+\label{fig:sev-15-60}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/recovery_hist_sev_20_30_60d.pdf}
+\caption{$60$-day return distribution after a $20$--$30\%$ crash. Median $0\%$, mean
+$+4\%$; $50\%$ earn money.}
+\label{fig:sev-20-60}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/recovery_hist_sev_30plus_60d.pdf}
+\caption{$60$-day return distribution after a crash worse than $30\%$. Median $-1\%$,
+mean $+3\%$; $49\%$ earn money---barely different from milder crashes at this horizon.}
+\label{fig:sev-30-60}
 \end{figure}
 
 \end{document}

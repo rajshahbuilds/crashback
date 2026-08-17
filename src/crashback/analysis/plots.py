@@ -65,6 +65,10 @@ def return_histogram(r: np.ndarray, spec: dict, out: Path, title: str | None = N
     return med, mean, p_earn, len(r)
 
 
-ONE_YEAR = {"lo": -1.0, "hi": 2.0, "bin": 0.10,
+ONE_YEAR = {"label": "one-year", "lo": -1.0, "hi": 2.0, "bin": 0.10,
             "ticks": [-1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0],
             "ticklabels": ["-100%", "-50%", "0", "+50%", "+100%", "+150%", "≥+200%"]}
+
+SIXTY_DAY = {"label": "60-day", "lo": -1.0, "hi": 1.0, "bin": 0.05,
+             "ticks": [-1.0, -0.5, 0.0, 0.5, 1.0],
+             "ticklabels": ["-100%", "-50%", "0", "+50%", "≥+100%"]}
