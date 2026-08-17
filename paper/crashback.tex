@@ -227,4 +227,57 @@ crash recovers to a profit.}
 \label{fig:mcap-mega}
 \end{figure}
 
+\paragraph{Crash severity.} We next ask whether the depth of the initial drop predicts
+recovery, measuring severity by the crash-day return and splitting events into four
+fixed bands from $-10\%$ down to worse than $-30\%$
+(Figures~\ref{fig:sev-10}--\ref{fig:sev-30}). A common intuition holds that a larger
+drop is a larger overreaction and should therefore rebound more strongly. The data do
+not support this for the typical stock: as the crash deepens, the recovery rate
+\emph{falls} (from $47\%$ at $10$--$15\%$ to $43\%$ beyond $30\%$) and the median
+one-year return worsens monotonically (from $-4\%$ to $-11\%$). Deeper crashes, on
+average, keep falling---consistent with a larger drop signaling worse news rather than
+a bigger bargain.
+
+The mean, however, tells a subtler story: it stays roughly flat ($+10$ to $+12\%$)
+across all severity bands, even as the median deteriorates. The reason is visible in the
+histograms: the deepest crashes have the widest distribution, with both a heavier left
+mass and a fatter right tail. A severe crash is thus a higher-variance bet---more likely
+to keep sliding, but with a larger payoff on the rare occasion it does rebound. Severity
+shifts the whole distribution left while stretching its right tail, rather than lifting
+recoveries uniformly. As with size, the effect is modest and univariate, and crash
+magnitude adds little once price behavior and market context are modeled.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/recovery_hist_sev_10_15.pdf}
+\caption{One-year return distribution after a $10$--$15\%$ crash ($194{,}397$ events).
+Median $-4\%$, mean $+10\%$; $47\%$ earn money.}
+\label{fig:sev-10}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/recovery_hist_sev_15_20.pdf}
+\caption{One-year return distribution after a $15$--$20\%$ crash ($42{,}920$ events).
+Median $-6\%$, mean $+10\%$; $46\%$ earn money.}
+\label{fig:sev-15}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/recovery_hist_sev_20_30.pdf}
+\caption{One-year return distribution after a $20$--$30\%$ crash ($20{,}020$ events).
+Median $-7\%$, mean $+12\%$; $46\%$ earn money.}
+\label{fig:sev-20}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/recovery_hist_sev_30plus.pdf}
+\caption{One-year return distribution after a crash worse than $30\%$ ($5{,}569$
+events). Median $-11\%$, mean $+10\%$; only $43\%$ earn money, the lowest of the four
+bands---yet the widest distribution, with the fattest right tail.}
+\label{fig:sev-30}
+\end{figure}
+
 \end{document}
