@@ -623,6 +623,24 @@ model's average prediction from $0.42$ toward the true $0.36$.}
 \label{tab:model-results}
 \end{table}
 
+Figure~\ref{fig:vs-m0} makes the comparison visual. Sorting the test crashes into ten
+equal-size buckets by predicted probability, each bar is a bucket's \emph{actual} recovery
+rate; Model~0's single constant forecast is the flat line. Model~0 must assign every crash the
+same probability, so its only prediction is that line; a useful model spreads crashes into
+buckets whose realized recovery rates fan out around it. The gap between the flat line and the
+rising staircase is exactly the discrimination the metrics summarize---slim but monotone
+out-of-time, dramatic (a $9\%\!\to\!92\%$ spread) once the era is held constant.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/model_vs_m0.pdf}
+\caption{Model vs.\ Model~0. Bars: actual recovery rate per predicted-probability decile
+(lowest to highest) of the 15-feature model. Dashed line: Model~0's constant base-rate
+forecast, identical for every crash. Left, the honest out-of-time test; right, the
+signal-isolating security-level test.}
+\label{fig:vs-m0}
+\end{figure}
+
 \paragraph{Discrimination is modest but real out-of-time.} On the honest chronological test
 the model beats the base rate on every proper metric (log loss, Brier, PR-AUC) with a
 ROC-AUC of $0.59$---a genuine but slim edge, in line with what a hard forecasting problem

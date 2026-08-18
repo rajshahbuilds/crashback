@@ -28,6 +28,7 @@ from crashback.config import load_config  # noqa: E402
 
 BAR, INK, MUTED = "#4C72B0", "#222222", "#8A8A8A"
 GREEN = "#55A868"
+RED = "#C44E52"
 FIGDIR = Path("paper/figures")
 
 PRETTY = {
@@ -64,6 +65,45 @@ def reliability_fig(base, regime, out: Path):
         ax.spines[s].set_color(MUTED)
     ax.tick_params(colors=INK, labelsize=8)
     ax.legend(loc="lower right", fontsize=8, frameon=False)
+    fig.savefig(out, bbox_inches="tight")
+    plt.close(fig)
+    print(f"wrote {out}")
+
+
+def _decile_panel(ax, r, title):
+    """Bars = actual recovery rate per predicted-probability decile; line = M0's flat forecast."""
+    import numpy as np
+    p = r.test["p"].to_numpy()
+    y = r.test["y"].to_numpy().astype(float)
+    order = np.argsort(p)
+    groups = np.array_split(order, 10)  # equal-count deciles, lowest predicted first
+    rates = np.array([y[g].mean() for g in groups])
+    m0 = r.m0["mean_pred"]  # M0 predicts the constant train base rate for everyone
+
+    x = np.arange(1, 11)
+    ax.bar(x, rates, color=BAR, edgecolor="white", linewidth=0.4, zorder=2)
+    ax.axhline(m0, color=RED, lw=1.6, ls="--", zorder=3)
+    ax.text(0.7, m0 + 0.012, f"Model 0 = {m0:.0%} (flat)", color=RED, fontsize=8,
+            ha="left", va="bottom")
+    ax.text(0.98, 0.03, f"bottom {rates[0]:.0%}  |  top {rates[-1]:.0%}",
+            transform=ax.transAxes, ha="right", va="bottom", fontsize=8.5, color=INK)
+    ax.set_title(title, fontsize=10, color=INK)
+    ax.set_xlabel("Predicted-probability decile (low $\\rightarrow$ high)", fontsize=9, color=INK)
+    ax.set_xticks(x)
+    ax.set_ylim(0, 1)
+    ax.grid(axis="y", color=MUTED, alpha=0.25, lw=0.5)
+    for s in ("top", "right"):
+        ax.spines[s].set_visible(False)
+    for s in ("left", "bottom"):
+        ax.spines[s].set_color(MUTED)
+    ax.tick_params(colors=INK, labelsize=8)
+
+
+def decile_fig(chrono, security, out: Path):
+    fig, axes = plt.subplots(1, 2, figsize=(9.2, 3.8), sharey=True)
+    _decile_panel(axes[0], chrono, "Chronological (out-of-time)")
+    _decile_panel(axes[1], security, "Security-level (era held constant)")
+    axes[0].set_ylabel("Actual recovery rate", fontsize=9, color=INK)
     fig.savefig(out, bbox_inches="tight")
     plt.close(fig)
     print(f"wrote {out}")
@@ -121,6 +161,7 @@ def main():
 
     reliability_fig(base, regime, FIGDIR / "model_reliability.pdf")
     importance_fig(regime, FIGDIR / "model_importance.pdf")
+    decile_fig(regime, security, FIGDIR / "model_vs_m0.pdf")
 
 
 if __name__ == "__main__":
