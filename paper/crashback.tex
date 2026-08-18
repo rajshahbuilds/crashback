@@ -525,4 +525,152 @@ and it foreshadows why market and sector context dominate the predictive models.
 \begin{figure}[H]\centering\includegraphics[width=0.8\textwidth]{figures/recovery_hist_relsec_with.pdf}
 \caption{Crashed with or better than sector ($>-3\%$; $7{,}668$ events). Median $+34\%$; $75\%$ earn money---the clearest recovery signal in the section.}\label{fig:relsec-with}\end{figure}
 
+\section{A One-Year Recovery Model}
+\label{sec:model}
+
+The descriptive screen showed that individual features tilt the one-year odds. A model
+asks the sharper question: combined, do these features yield a \emph{calibrated} per-crash
+probability of recovery? We keep the Model~0 target of Section~\ref{sec:m0}---the event
+earns money if its survivorship-safe one-year total return from the crash-day close is
+positive---and estimate $P(\text{earn money in a year})$ with gradient-boosted trees
+(XGBoost), which absorb missing fundamentals natively and capture the nonlinear
+interactions the histograms only hinted at.
+
+\subsection{Organizing the data}
+
+We evaluate under two data organizations, because they answer two different questions.
+
+\paragraph{Chronological (out-of-time).} The honest test of a forecaster is a future it
+has not seen, so the primary split is by time: train on the distant past, validate on an
+intermediate period, and hold out the most recent years for a single final test. Because
+each outcome spans $252$ trading days, a \emph{one-year embargo} brackets every boundary
+(the 2018 and 2021 crash-years are dropped) so that no outcome window straddles two splits.
+The cost of honesty is visible in the base rates (Table~\ref{tab:splits}): crashes in
+2019--2020 recovered $78\%$ of the time---they were measured through the 2020--21 rebound---while
+2022+ crashes recovered only $36\%$. Recovery base rates are strongly non-stationary,
+and a model trained on the long-run average walks into 2022 predicting too high. This is a
+calibration problem, and we return to it below.
+
+\paragraph{Security-level (signal-isolating).} To ask instead \emph{how well the features
+separate recoverers from non-recoverers} with the market regime held constant, we assign
+each \emph{security} by hash to train/validation/test at $60/30/10$. All of a stock's
+correlated repeat-crashes stay in one split (so there is no within-stock leakage), and every
+split samples the same eras---which deliberately lets test crashes be contemporaneous with
+training crashes. This measures feature signal, \emph{not} out-of-time forecasting skill:
+the model implicitly knows each era's base rate. The two organizations bracket reality.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrl}
+\toprule
+Split & Events & $P(\text{earn})$ & Span \\
+\midrule
+\multicolumn{4}{l}{\emph{Chronological (one-year embargo)}}\\
+\quad train      & 225{,}436 & 46.5\% & 1926--2017 \\
+\quad validation &  14{,}988 & 78.1\% & 2019--2020 \\
+\quad test       &  13{,}635 & 35.7\% & 2022--2025 \\
+\addlinespace
+\multicolumn{4}{l}{\emph{Security-level ($60/30/10$ by security)}}\\
+\quad train      & 157{,}901 & 46.8\% & 1926--2025 \\
+\quad validation &  78{,}666 & 47.4\% & 1926--2025 \\
+\quad test       &  26{,}339 & 46.3\% & 1926--2025 \\
+\bottomrule
+\end{tabular}
+\caption{The two data organizations. Under the chronological split the periods live in
+different worlds (a $78\%$ vs.\ $36\%$ base rate); under the security-level split every
+period samples the same century, so the base rate is $\approx$$46\%$ throughout.}
+\label{tab:splits}
+\end{table}
+
+\subsection{What the model sees}
+
+The model is given the ten features from the feature-correlation section---log market cap,
+crash severity, prior-crash count (20d), P/E, pre-crash one-year return, 252-day beta, EBITDA
+margin, revenue growth, market 20-day return, and crash-day return relative to sector. To let
+it recognize the \emph{environment} a stock is crashing into---the direct remedy for the
+non-stationary base rate above---we optionally add five point-in-time market-regime features,
+all trailing (hence knowable at the crash-day close): the market's trailing 126-day and
+252-day return, its drawdown from the trailing 52-week high, its trailing 60-day realized
+volatility, and \emph{crash breadth} (the fraction of the universe crashing $\ge$$10\%$ in a
+day, averaged over the trailing 20 days). Hyperparameters are chosen on a predeclared grid
+scored on the validation period only, with early stopping on validation; the test set is
+touched exactly once.
+
+\subsection{Results}
+
+Table~\ref{tab:model-results} reports the single held-out test for each organization, against
+a Model~0 baseline that predicts the constant training base rate for every crash.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrrrr}
+\toprule
+Model & Log loss & Brier & ROC-AUC & PR-AUC & ECE \\
+\midrule
+\multicolumn{6}{l}{\emph{Chronological test (2022+, $n=13{,}635$, actual $P(\text{earn})=35.7\%$)}}\\
+\quad Model 0 (base rate)            & 0.6757 & 0.2413 & --- & 0.357 & --- \\
+\quad XGBoost, 10 features           & 0.6645 & 0.2352 & 0.592 & 0.428 & 0.093 \\
+\quad XGBoost, 15 features (+regime) & \textbf{0.6540} & \textbf{0.2307} & 0.589 & 0.428 & \textbf{0.061} \\
+\addlinespace
+\multicolumn{6}{l}{\emph{Security-level test ($n=26{,}339$, actual $P(\text{earn})=46.3\%$)}}\\
+\quad Model 0 (base rate)            & 0.6905 & 0.2487 & --- & 0.463 & --- \\
+\quad XGBoost, 15 features (+regime) & \textbf{0.5544} & \textbf{0.1888} & \textbf{0.782} & \textbf{0.766} & \textbf{0.009} \\
+\bottomrule
+\end{tabular}
+\caption{Held-out test performance. Lower is better for log loss, Brier, and ECE (expected
+calibration error); higher is better for the AUCs. The regime features move the chronological
+model's average prediction from $0.42$ toward the true $0.36$.}
+\label{tab:model-results}
+\end{table}
+
+\paragraph{Discrimination is modest but real out-of-time.} On the honest chronological test
+the model beats the base rate on every proper metric (log loss, Brier, PR-AUC) with a
+ROC-AUC of $0.59$---a genuine but slim edge, in line with what a hard forecasting problem
+should yield.
+
+\paragraph{Regime features fix the level, not the ranking.} Adding the five regime features
+cuts calibration error by a third (ECE $0.093\!\to\!0.061$) and improves both proper scores,
+while ROC-AUC and PR-AUC barely move. That is the signature of a feature that tells the model
+\emph{what level} to predict rather than \emph{how to rank}: able at last to see it was
+crashing into a risk-off tape, the model dials its average forecast down toward the truth.
+Figure~\ref{fig:reliability} shows the reliability curve pulled toward the diagonal. The fix
+is only partial---the mid-to-high buckets still over-predict---because 2022 was in part a
+genuinely novel regime (a rate-shock grind more pessimistic than almost anything in the
+1926--2017 training history). Regime features let the model recognize regimes it has seen;
+they cannot conjure a base rate for one it has not.
+
+\paragraph{With the era held constant, the features rank recovery well.} Under the
+security-level split the same model reaches ROC-AUC $0.78$ and near-perfect calibration
+(ECE $0.009$). The jump from $0.59$ to $0.78$ is not the model getting smarter---it is the
+test getting easier, because contemporaneous training crashes reveal each era's base rate.
+The two numbers bracket the truth: the features genuinely separate recoverers from
+non-recoverers ($0.78$), but forecasting an unseen future costs most of that edge ($0.59$).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.62\textwidth]{figures/model_reliability.pdf}
+\caption{Reliability of the chronological model on the 2022+ test set: predicted probability
+vs.\ realized recovery rate, in ten equal-width bins. The regime features (blue) pull the
+curve toward the $45^\circ$ perfect-calibration line relative to the price-and-fundamentals
+model (grey).}
+\label{fig:reliability}
+\end{figure}
+
+\paragraph{What the model leans on.} Figure~\ref{fig:importance} ranks the fifteen features
+by gain. Market-regime features and beta take the top slots (trailing volatility, 252-day
+market return, crash breadth), followed by the fundamentals (P/E, revenue growth, EBITDA
+margin); the crash's own depth and the stock's prior-crash count are near-noise. This echoes
+the descriptive finding that \emph{context}---where the market and sector are---separates
+one-year recoveries more sharply than the mechanics of the individual drop.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.78\textwidth]{figures/model_importance.pdf}
+\caption{Feature importance (fraction of total gain) for the 15-feature chronological model.
+Market-regime features (green) dominate the top of the ranking; the short-horizon market
+return the model previously relied on fades once the longer-horizon regime signals are
+available.}
+\label{fig:importance}
+\end{figure}
+
 \end{document}
