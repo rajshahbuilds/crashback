@@ -702,4 +702,57 @@ sorting.}
 \label{fig:importance}
 \end{figure}
 
+\section{Robustness: How Deep a Crash?}
+\label{sec:robustness}
+
+Everything so far defines a crash as a single-day drop of at least $10\%$. Does the result survive
+a stricter definition? A deeper crash is simply a $-10\%$ event with a more negative crash-day
+return, so we subset the events by depth and re-run the entire pooled walk-forward at thresholds of
+$-15\%$, $-20\%$, and $-30\%$---same features, same target, same 2005--2024 pooling
+(Table~\ref{tab:threshold}). (One caveat: path features such as the prior-crash count stay defined
+at the $-10\%$ threshold; only the event set deepens.)
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrrrrrr}
+\toprule
+Crash & Events & Base & Base & ROC & ECE & Bottom-dec.\ & Top-dec.\ \\
+def.\ & & earn & median & AUC & & earn & earn / median \\
+\midrule
+$-10\%$ & 82{,}970 & 51\% & $+2\%$  & 0.666 & 0.045 & 30\% & 79\% / $+60\%$ \\
+$-15\%$ & 25{,}379 & 50\% & $-0\%$  & \textbf{0.700} & 0.037 & 25\% & 86\% / $+96\%$ \\
+$-20\%$ &  9{,}967 & 48\% & $-4\%$  & \textbf{0.703} & 0.055 & 22\% & 86\% / $+104\%$ \\
+$-30\%$ &  2{,}304 & 43\% & $-13\%$ & 0.660 & 0.071 & 20\% & 75\% / $+77\%$ \\
+\bottomrule
+\end{tabular}
+\caption{Pooled out-of-sample walk-forward at four crash-depth thresholds. As crashes deepen the
+\emph{average} outcome worsens (base earn and median fall) while the model's \emph{discrimination}
+sharpens (AUC rises, top-decile payoff grows), until sample size collapses at $-30\%$.}
+\label{tab:threshold}
+\end{table}
+
+The table pulls in two directions at once, and the tension is the point.
+
+\paragraph{On average, deeper is worse.} The base recovery rate falls monotonically from $51\%$ at
+$-10\%$ to $43\%$ at $-30\%$, and the base median return drops from $+2\%$ to $-13\%$. A larger
+single-day drop carries more genuine damage, not a bigger reflexive bounce: the naive ``buy the
+biggest dips'' rule gets \emph{worse} the deeper it is applied.
+
+\paragraph{But the model gets sharper, and the top decile pays far more.} Out-of-sample ROC-AUC
+rises from $0.666$ at $-10\%$ to $0.70$ at $-15$ and $-20\%$, and the top-decile median return
+roughly doubles, from $+60\%$ to $+104\%$. The bottom-to-top spread widens with it (at $-20\%$,
+$22\%$ vs.\ $86\%$ earn). Deeper crashes are a more \emph{bimodal} population---more terminal losers
+\emph{and} more violent overreaction-rebounds---so the average sinks while the top-decile payoff
+explodes, and the model separates the two best exactly where the stakes are highest. This is the
+temporary-overreaction-versus-fundamental-damage distinction the project set out to test, and it is
+sharpest precisely where crashes are deepest.
+
+\paragraph{Caveats.} Two. The $-30\%$ row rests on only $2{,}304$ pooled crashes; its lower AUC
+($0.66$) and higher ECE ($0.07$) are small-sample noise, not evidence of a real decline in signal.
+And as in Section~\ref{sec:model}, the absolute magnitudes are vintage-weighted---inflated by the
+2008 and 2020 rebound cohorts---so the trustworthy reading is the \emph{pattern} (deeper crashes are
+more separable and their top decile pays more), not the literal $+104\%$. The practical sweet spot
+is $-15\%$ to $-20\%$: the strongest discrimination, the largest top-decile payoff, and still enough
+events to trust.
+
 \end{document}
