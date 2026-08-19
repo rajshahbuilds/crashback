@@ -71,20 +71,28 @@ def reliability_fig(base, regime, out: Path):
 
 
 def _decile_panel(ax, r, title):
-    """Bars = actual recovery rate per predicted-probability decile; line = M0's flat forecast."""
+    """Bars = actual recovery rate per predicted-probability decile.
+
+    Two references: the realized test base rate (the no-skill line the staircase should straddle)
+    and Model 0's flat forecast (the train base rate, which over-shoots the test period).
+    """
     p = r.test["p"].to_numpy()
     y = r.test["y"].to_numpy().astype(float)
     order = np.argsort(p)
     groups = np.array_split(order, 10)  # equal-count deciles, lowest predicted first
     rates = np.array([y[g].mean() for g in groups])
-    m0 = r.m0["mean_pred"]  # M0 predicts the constant train base rate for everyone
+    base = r.metrics["prevalence"]     # realized test-period recovery rate (no-skill reference)
+    m0 = r.m0["mean_pred"]             # Model 0's flat forecast (train base rate)
 
     x = np.arange(1, 11)
     ax.bar(x, rates, color=BAR, edgecolor="white", linewidth=0.4, zorder=2)
-    ax.axhline(m0, color=RED, lw=1.6, ls="--", zorder=3)
-    ax.text(0.7, m0 + 0.012, f"Model 0 = {m0:.0%} (flat)", color=RED, fontsize=8,
+    ax.axhline(base, color=RED, lw=1.6, ls="--", zorder=3)
+    ax.text(0.6, base + 0.012, f"base rate = {base:.0%}", color=RED, fontsize=8,
             ha="left", va="bottom")
-    ax.text(0.98, 0.03, f"bottom {rates[0]:.0%}  |  top {rates[-1]:.0%}",
+    ax.axhline(m0, color=MUTED, lw=1.4, ls=":", zorder=3)
+    ax.text(10.4, m0 + 0.012, f"Model 0 forecast = {m0:.0%}", color=MUTED, fontsize=8,
+            ha="right", va="bottom")
+    ax.text(0.98, 0.03, f"bottom decile {rates[0]:.0%}  |  top decile {rates[-1]:.0%}",
             transform=ax.transAxes, ha="right", va="bottom", fontsize=8.5, color=INK)
     ax.set_title(title, fontsize=10, color=INK)
     ax.set_xlabel("Predicted-probability decile (low $\\rightarrow$ high)", fontsize=9, color=INK)

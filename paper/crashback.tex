@@ -602,20 +602,27 @@ average prediction from $0.42$ toward the true $0.36$.}
 \label{tab:model-results}
 \end{table}
 
-Figure~\ref{fig:vs-m0} makes the comparison visual. Sorting the test crashes into ten
+Figure~\ref{fig:vs-m0} makes the discrimination visual. Sorting the test crashes into ten
 equal-size buckets by predicted probability, each bar is a bucket's \emph{actual} recovery
-rate; Model~0's single constant forecast is the flat line. Model~0 must assign every crash the
-same probability, so its only prediction is that line; a useful model spreads crashes into
-buckets whose realized recovery rates fan out around it. The gap between the flat line and the
-rising staircase is exactly the discrimination the metrics summarize---slim but monotone,
-from a bottom-decile recovery rate of $24\%$ to $48\%$ in the top decile.
+rate. A model with no skill would leave every bar at the overall base rate (the red line);
+ours produces a monotone staircase that straddles it, from a bottom-decile recovery rate of
+$24\%$ to $48\%$ in the top decile. Two subtleties are worth naming. First, the staircase
+sits mostly below Model~0's flat forecast (the grey line, $47\%$) not because the model is
+weak but because Model~0 \emph{over-shoots}: it forecasts the training-era base rate of $47\%$
+while the 2022+ test period actually recovered only $36\%$---the same non-stationarity of
+Table~\ref{tab:splits}, and precisely the miscalibration the regime features reduce. Second,
+the gain over Model~0 is genuine but slim: the model wins on every proper metric in
+Table~\ref{tab:model-results}, and the bottom decile---a $24\%$ recovery rate against a $36\%$
+base---is the sharpest usable signal, an \emph{avoid} rather than a \emph{buy}.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.62\textwidth]{figures/model_vs_m0.pdf}
-\caption{Model vs.\ Model~0 on the honest out-of-time test. Bars: actual recovery rate per
-predicted-probability decile (lowest to highest) of the 15-feature model. Dashed line:
-Model~0's constant base-rate forecast, identical for every crash.}
+\includegraphics[width=0.68\textwidth]{figures/model_vs_m0.pdf}
+\caption{Model discrimination on the honest out-of-time test. Bars: actual recovery rate per
+predicted-probability decile (lowest to highest) of the 15-feature model. Red line: the
+realized test-period base rate ($36\%$)---the no-skill reference the staircase should straddle.
+Grey dotted line: Model~0's flat forecast ($47\%$, the training base rate), which over-shoots
+the test period.}
 \label{fig:vs-m0}
 \end{figure}
 
