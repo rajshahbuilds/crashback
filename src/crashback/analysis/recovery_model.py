@@ -7,7 +7,6 @@ split and feature definitions.
 """
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass
 from datetime import date
 
@@ -35,7 +34,6 @@ REGIME_FEATURES = [
 TRAIN_END = date(2017, 12, 31)
 VAL = (date(2019, 1, 1), date(2020, 12, 31))
 TEST_START = date(2022, 1, 1)
-SPLIT_BUCKETS = [(600, "train"), (900, "validation"), (1000, "test")]
 
 
 def assemble(cfg) -> pl.DataFrame:
@@ -60,25 +58,11 @@ def assemble(cfg) -> pl.DataFrame:
 
 
 def split_chrono(df: pl.DataFrame) -> pl.DataFrame:
+    in_val = (pl.col("crash_date") >= VAL[0]) & (pl.col("crash_date") <= VAL[1])
     return df.with_columns(split=pl.when(pl.col("crash_date") <= TRAIN_END).then(pl.lit("train"))
-                           .when((pl.col("crash_date") >= VAL[0]) & (pl.col("crash_date") <= VAL[1]))
-                           .then(pl.lit("validation"))
+                           .when(in_val).then(pl.lit("validation"))
                            .when(pl.col("crash_date") >= TEST_START).then(pl.lit("test"))
                            .otherwise(pl.lit("embargo")))
-
-
-def _hash_split(security_id) -> str:
-    h = int(hashlib.md5(str(security_id).encode()).hexdigest(), 16) % 1000
-    for cut, name in SPLIT_BUCKETS:
-        if h < cut:
-            return name
-    return "test"
-
-
-def split_security(df: pl.DataFrame) -> pl.DataFrame:
-    sids = df["security_id"].unique().to_list()
-    m = pl.DataFrame({"security_id": sids, "split": [_hash_split(s) for s in sids]})
-    return df.join(m, on="security_id", how="left")
 
 
 @dataclass
@@ -96,10 +80,10 @@ class FitResult:
     best_iteration: int
 
 
-def fit_predict(df: pl.DataFrame, cfg, *, split: str, regime: bool, seed: int = 42) -> FitResult:
-    """Fit XGBoost under one (split, feature-set) choice; evaluate once on test."""
+def fit_predict(df: pl.DataFrame, cfg, *, regime: bool, seed: int = 42) -> FitResult:
+    """Fit XGBoost for one feature set on the chronological split; evaluate once on test."""
     cols = BASE_FEATURES + (REGIME_FEATURES if regime else [])
-    d = split_chrono(df) if split == "chrono" else split_security(df)
+    d = split_chrono(df)
     parts = {s: d.filter(pl.col("split") == s) for s in ("train", "validation", "test")}
 
     sizes = pl.DataFrame([{
@@ -123,7 +107,7 @@ def fit_predict(df: pl.DataFrame, cfg, *, split: str, regime: bool, seed: int = 
     tbl, ece = calibration_table(y_te, p_te, cfg.models.calibration_bins)
     imp = xgbm.importance_table(res.booster, cols)
 
-    label = f"{split}{'+regime' if regime else ''}"
+    label = f"chrono{'+regime' if regime else ''}"
     test = parts["test"].select("event_id", "crash_date", "y").with_columns(p=pl.Series(p_te))
     return FitResult(label, cols, test, m, m0, tbl, ece, imp, sizes,
                      res.best_params, res.best_iteration)

@@ -5,15 +5,13 @@ Thin CLI over crashback.analysis.recovery_model. Target y = 1 if the survivorshi
 total return after the crash-day close is positive. Base features are the ten screened in the
 feature-correlation section; --regime adds five point-in-time market-regime features.
 
---split chrono (default): honest out-of-time split with a one-year embargo
+Chronological split with a one-year embargo:
     train <= 2017-12-31 | validation 2019-2020 | test 2022+   (2018, 2021 embargo)
---split security: security-level 60/30/10 hash split (contemporaneous; feature signal, not
-    out-of-time skill).
 
 Tuning: predeclared grid scored on VALIDATION only; test touched once. Compared against the
 Model 0 base rate (train prevalence as a constant forecast).
 
-Run: PYTHONPATH=src .venv/bin/python scripts/train_1yr_model.py [--split chrono|security] [--regime]
+Run: PYTHONPATH=src .venv/bin/python scripts/train_1yr_model.py [--regime]
 """
 from __future__ import annotations
 
@@ -25,17 +23,15 @@ from crashback.config import load_config
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--split", choices=["chrono", "security"], default="chrono")
     ap.add_argument("--regime", action="store_true", help="add point-in-time regime features")
     args = ap.parse_args()
 
     cfg = load_config()
     print("assembling features ...")
     df = assemble(cfg)
-    r = fit_predict(df, cfg, split=args.split, regime=args.regime)
+    r = fit_predict(df, cfg, regime=args.regime)
 
-    print(f"\nsplit={args.split}  regime={'on' if args.regime else 'off'}  "
-          f"n_features={len(r.features)}")
+    print(f"\nregime={'on' if args.regime else 'off'}  n_features={len(r.features)}")
     print(r.sizes)
     print(f"\nbest params: {r.best_params}  best_iteration={r.best_iteration}")
 

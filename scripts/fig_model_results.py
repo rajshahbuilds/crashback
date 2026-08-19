@@ -72,7 +72,6 @@ def reliability_fig(base, regime, out: Path):
 
 def _decile_panel(ax, r, title):
     """Bars = actual recovery rate per predicted-probability decile; line = M0's flat forecast."""
-    import numpy as np
     p = r.test["p"].to_numpy()
     y = r.test["y"].to_numpy().astype(float)
     order = np.argsort(p)
@@ -99,11 +98,10 @@ def _decile_panel(ax, r, title):
     ax.tick_params(colors=INK, labelsize=8)
 
 
-def decile_fig(chrono, security, out: Path):
-    fig, axes = plt.subplots(1, 2, figsize=(9.2, 3.8), sharey=True)
-    _decile_panel(axes[0], chrono, "Chronological (out-of-time)")
-    _decile_panel(axes[1], security, "Security-level (era held constant)")
-    axes[0].set_ylabel("Actual recovery rate", fontsize=9, color=INK)
+def decile_fig(chrono, out: Path):
+    fig, ax = plt.subplots(figsize=(5.6, 3.9))
+    _decile_panel(ax, chrono, "Chronological (out-of-time)")
+    ax.set_ylabel("Actual recovery rate", fontsize=9, color=INK)
     fig.savefig(out, bbox_inches="tight")
     plt.close(fig)
     print(f"wrote {out}")
@@ -150,18 +148,16 @@ def main():
     cfg = load_config()
     print("assembling features ...")
     df = assemble(cfg)
-    base = fit_predict(df, cfg, split="chrono", regime=False)
-    regime = fit_predict(df, cfg, split="chrono", regime=True)
-    security = fit_predict(df, cfg, split="security", regime=True)
+    base = fit_predict(df, cfg, regime=False)
+    regime = fit_predict(df, cfg, regime=True)
 
     print("\n===== metrics for the LaTeX table =====")
     metrics_row("chrono base", base)
     metrics_row("chrono +regime", regime)
-    metrics_row("security +regime", security)
 
     reliability_fig(base, regime, FIGDIR / "model_reliability.pdf")
     importance_fig(regime, FIGDIR / "model_importance.pdf")
-    decile_fig(regime, security, FIGDIR / "model_vs_m0.pdf")
+    decile_fig(regime, FIGDIR / "model_vs_m0.pdf")
 
 
 if __name__ == "__main__":

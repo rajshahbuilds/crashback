@@ -538,26 +538,15 @@ interactions the histograms only hinted at.
 
 \subsection{Organizing the data}
 
-We evaluate under two data organizations, because they answer two different questions.
-
-\paragraph{Chronological (out-of-time).} The honest test of a forecaster is a future it
-has not seen, so the primary split is by time: train on the distant past, validate on an
-intermediate period, and hold out the most recent years for a single final test. Because
-each outcome spans $252$ trading days, a \emph{one-year embargo} brackets every boundary
-(the 2018 and 2021 crash-years are dropped) so that no outcome window straddles two splits.
-The cost of honesty is visible in the base rates (Table~\ref{tab:splits}): crashes in
-2019--2020 recovered $78\%$ of the time---they were measured through the 2020--21 rebound---while
-2022+ crashes recovered only $36\%$. Recovery base rates are strongly non-stationary,
-and a model trained on the long-run average walks into 2022 predicting too high. This is a
-calibration problem, and we return to it below.
-
-\paragraph{Security-level (signal-isolating).} To ask instead \emph{how well the features
-separate recoverers from non-recoverers} with the market regime held constant, we assign
-each \emph{security} by hash to train/validation/test at $60/30/10$. All of a stock's
-correlated repeat-crashes stay in one split (so there is no within-stock leakage), and every
-split samples the same eras---which deliberately lets test crashes be contemporaneous with
-training crashes. This measures feature signal, \emph{not} out-of-time forecasting skill:
-the model implicitly knows each era's base rate. The two organizations bracket reality.
+The honest test of a forecaster is a future it has not seen, so we split chronologically:
+train on the distant past, validate on an intermediate period, and hold out the most recent
+years for a single final test (Table~\ref{tab:splits}). Because each outcome spans $252$
+trading days, a \emph{one-year embargo} brackets every boundary (the 2018 and 2021 crash-years
+are dropped) so that no outcome window straddles two splits. The cost of honesty is visible in
+the base rates: crashes in 2019--2020 recovered $78\%$ of the time---they were measured through
+the 2020--21 rebound---while 2022+ crashes recovered only $36\%$. Recovery base rates are
+strongly non-stationary, and a model trained on the long-run average walks into 2022 predicting
+too high. This is a calibration problem, and we return to it below.
 
 \begin{table}[H]
 \centering
@@ -565,20 +554,14 @@ the model implicitly knows each era's base rate. The two organizations bracket r
 \toprule
 Split & Events & $P(\text{earn})$ & Span \\
 \midrule
-\multicolumn{4}{l}{\emph{Chronological (one-year embargo)}}\\
-\quad train      & 225{,}436 & 46.5\% & 1926--2017 \\
-\quad validation &  14{,}988 & 78.1\% & 2019--2020 \\
-\quad test       &  13{,}635 & 35.7\% & 2022--2025 \\
-\addlinespace
-\multicolumn{4}{l}{\emph{Security-level ($60/30/10$ by security)}}\\
-\quad train      & 157{,}901 & 46.8\% & 1926--2025 \\
-\quad validation &  78{,}666 & 47.4\% & 1926--2025 \\
-\quad test       &  26{,}339 & 46.3\% & 1926--2025 \\
+train      & 225{,}436 & 46.5\% & 1926--2017 \\
+validation &  14{,}988 & 78.1\% & 2019--2020 \\
+test       &  13{,}635 & 35.7\% & 2022--2025 \\
 \bottomrule
 \end{tabular}
-\caption{The two data organizations. Under the chronological split the periods live in
-different worlds (a $78\%$ vs.\ $36\%$ base rate); under the security-level split every
-period samples the same century, so the base rate is $\approx$$46\%$ throughout.}
+\caption{Chronological split with a one-year embargo (the 2018 and 2021 crash-years fall in
+the embargo). The periods live in different worlds---a $78\%$ vs.\ $36\%$ base rate---which is
+the non-stationarity the model must contend with.}
 \label{tab:splits}
 \end{table}
 
@@ -598,8 +581,8 @@ touched exactly once.
 
 \subsection{Results}
 
-Table~\ref{tab:model-results} reports the single held-out test for each organization, against
-a Model~0 baseline that predicts the constant training base rate for every crash.
+Table~\ref{tab:model-results} reports the single held-out test, against a Model~0 baseline
+that predicts the constant training base rate for every crash.
 
 \begin{table}[H]
 \centering
@@ -611,15 +594,11 @@ Model & Log loss & Brier & ROC-AUC & PR-AUC & ECE \\
 \quad Model 0 (base rate)            & 0.6757 & 0.2413 & --- & 0.357 & --- \\
 \quad XGBoost, 10 features           & 0.6645 & 0.2352 & 0.592 & 0.428 & 0.093 \\
 \quad XGBoost, 15 features (+regime) & \textbf{0.6540} & \textbf{0.2307} & 0.589 & 0.428 & \textbf{0.061} \\
-\addlinespace
-\multicolumn{6}{l}{\emph{Security-level test ($n=26{,}339$, actual $P(\text{earn})=46.3\%$)}}\\
-\quad Model 0 (base rate)            & 0.6905 & 0.2487 & --- & 0.463 & --- \\
-\quad XGBoost, 15 features (+regime) & \textbf{0.5544} & \textbf{0.1888} & \textbf{0.782} & \textbf{0.766} & \textbf{0.009} \\
 \bottomrule
 \end{tabular}
 \caption{Held-out test performance. Lower is better for log loss, Brier, and ECE (expected
-calibration error); higher is better for the AUCs. The regime features move the chronological
-model's average prediction from $0.42$ toward the true $0.36$.}
+calibration error); higher is better for the AUCs. The regime features move the model's
+average prediction from $0.42$ toward the true $0.36$.}
 \label{tab:model-results}
 \end{table}
 
@@ -628,16 +607,15 @@ equal-size buckets by predicted probability, each bar is a bucket's \emph{actual
 rate; Model~0's single constant forecast is the flat line. Model~0 must assign every crash the
 same probability, so its only prediction is that line; a useful model spreads crashes into
 buckets whose realized recovery rates fan out around it. The gap between the flat line and the
-rising staircase is exactly the discrimination the metrics summarize---slim but monotone
-out-of-time, dramatic (a $9\%\!\to\!92\%$ spread) once the era is held constant.
+rising staircase is exactly the discrimination the metrics summarize---slim but monotone,
+from a bottom-decile recovery rate of $24\%$ to $48\%$ in the top decile.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{figures/model_vs_m0.pdf}
-\caption{Model vs.\ Model~0. Bars: actual recovery rate per predicted-probability decile
-(lowest to highest) of the 15-feature model. Dashed line: Model~0's constant base-rate
-forecast, identical for every crash. Left, the honest out-of-time test; right, the
-signal-isolating security-level test.}
+\includegraphics[width=0.62\textwidth]{figures/model_vs_m0.pdf}
+\caption{Model vs.\ Model~0 on the honest out-of-time test. Bars: actual recovery rate per
+predicted-probability decile (lowest to highest) of the 15-feature model. Dashed line:
+Model~0's constant base-rate forecast, identical for every crash.}
 \label{fig:vs-m0}
 \end{figure}
 
@@ -656,13 +634,6 @@ is only partial---the mid-to-high buckets still over-predict---because 2022 was 
 genuinely novel regime (a rate-shock grind more pessimistic than almost anything in the
 1926--2017 training history). Regime features let the model recognize regimes it has seen;
 they cannot conjure a base rate for one it has not.
-
-\paragraph{With the era held constant, the features rank recovery well.} Under the
-security-level split the same model reaches ROC-AUC $0.78$ and near-perfect calibration
-(ECE $0.009$). The jump from $0.59$ to $0.78$ is not the model getting smarter---it is the
-test getting easier, because contemporaneous training crashes reveal each era's base rate.
-The two numbers bracket the truth: the features genuinely separate recoverers from
-non-recoverers ($0.78$), but forecasting an unseen future costs most of that edge ($0.59$).
 
 \begin{figure}[H]
 \centering
