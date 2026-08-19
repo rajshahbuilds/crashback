@@ -175,9 +175,9 @@ rarer and smaller than the full-history average, let alone the 2010s bull. The s
 $60$-day window is similarly depressed (Figure~\ref{fig:m0-2022-60d}: $42.4\%$ earn,
 median $-6.2\%$). Between the post-2010 bull (median near zero, mean $+21\%$) and the
 2022--onward grind (median $-21.7\%$), the unconditional base rate spans an enormous
-range. Model~0 is therefore not a single number but a regime-dependent band, which is
-why the predictive model of Section~\ref{sec:model} is trained and tested \emph{across}
-these regimes with a walk-forward rather than evaluated on any one of them.
+range. Model~0 is therefore not a single number but a regime-dependent band---any predictive
+model of recovery would have to be judged \emph{across} these regimes rather than on any one of
+them.
 
 \begin{figure}[H]
 \centering
@@ -673,263 +673,142 @@ already-falling market ($40\%$/$-13\%$) fared slightly better than while the mar
 caution.}
 \label{fig:f22-relsec}\end{figure}
 
-\section{A One-Year Recovery Model}
-\label{sec:model}
+\section{Recovery Within a Week}
+\label{sec:week}
 
-The descriptive screen showed that individual features tilt the one-year odds. A model
-asks the sharper question: combined, do these features yield a \emph{calibrated} per-crash
-probability of recovery? We keep the Model~0 target of Section~\ref{sec:m0}---the event
-earns money if its survivorship-safe one-year total return from the crash-day close is
-positive---and estimate $P(\text{earn money in a year})$ with gradient-boosted trees
-(XGBoost), which absorb missing fundamentals natively and capture the nonlinear
-interactions the histograms only hinted at.
+The one-year horizon of the previous sections asks whether a crash is a \emph{durable} buying
+opportunity. A very different question is whether it bounces \emph{immediately}. Here we redefine
+recovery as the stock being \emph{up one week later}---a positive total return over the five trading
+days after the crash-day close---and repeat every histogram of the feature-correlation section at
+that horizon. Changing the horizon flips the picture.
 
-\subsection{Organizing the data: an expanding-window walk-forward}
-
-A single train/test split stakes the whole verdict on one test period, and the descriptive
-section showed how much the \emph{vintage} matters---a crash's one-year outcome depends heavily
-on the era it falls into. So instead of one split we evaluate the way the model would actually be
-deployed. For each year $Y$ from 2005 to 2024 we train only on crashes whose full one-year outcome
-precedes $Y$ (a one-year embargo: crash date $\le$ Dec $Y{-}2$), predict every crash in year $Y$,
-and set those predictions aside. Concatenating all years yields one out-of-sample set of
-$82{,}970$ crashes spanning two decades, each scored by a model that never saw its era. This is
-both a more honest evaluation---no single vintage can flatter or damn it---and the real production
-loop: retrain as crashes accumulate (the training set grows from $177$k events in 2005 to $255$k
-in 2024) and always score the next period with the maximum available history.
-
-The vintage effect is large. The base recovery rate swings from $36\%$ (2022--2024) to $60\%$
-(2019--2021, whose crashes were measured through the 2020--21 rebound), and no static model can
-anticipate that swing. What is stable is the model's \emph{edge over each vintage's own base
-rate}: its top decile beats the contemporaneous base rate in all six three-year blocks
-(Table~\ref{tab:vintages}).
-
-\begin{table}[H]
-\centering
-\begin{tabular}{lrrr}
-\toprule
-Vintage & Base $P(\text{earn})$ & Top-decile $P(\text{earn})$ & Top-decile median ROI \\
-\midrule
-2007--2009 & 55\% & 68\% & $+41\%$ \\
-2010--2012 & 56\% & 77\% & $+22\%$ \\
-2013--2015 & 41\% & 51\% & $+1\%$ \\
-2016--2018 & 48\% & 65\% & $+12\%$ \\
-2019--2021 & 60\% & 99\% & $+108\%$ \\
-2022--2024 & 36\% & 47\% & $-4\%$ \\
-\bottomrule
-\end{tabular}
-\caption{Walk-forward by three-year vintage. The model's top decile beats the contemporaneous
-base rate in every block, but absolute levels ride the vintage (2019--2021 is inflated by the
-2020--21 rebound; 2022--2024 is depressed). The \emph{edge}, not the level, is the stable finding.}
-\label{tab:vintages}
-\end{table}
-
-\subsection{What the model sees}
-
-The model is given the ten features from the feature-correlation section---log market cap,
-crash severity, prior-crash count (20d), P/E, pre-crash one-year return, 252-day beta, EBITDA
-margin, revenue growth, market 20-day return, and crash-day return relative to sector. To let
-it recognize the \emph{environment} a stock is crashing into---the direct remedy for the
-non-stationary base rate above---we optionally add five point-in-time market-regime features,
-all trailing (hence knowable at the crash-day close): the market's trailing 126-day and
-252-day return, its drawdown from the trailing 52-week high, its trailing 60-day realized
-volatility, and \emph{crash breadth} (the fraction of the universe crashing $\ge$$10\%$ in a
-day, averaged over the trailing 20 days). Hyperparameters are fixed to the set from a predeclared
-grid search; they are not re-tuned inside each walk-forward window, a standard simplification that
-keeps every year's model comparable.
-
-\subsection{Results}
-
-Table~\ref{tab:model-results} reports the pooled walk-forward against a time-aware Model~0
-baseline, which for each year forecasts the recovery base rate of the data trainable then
-(crashes through $Y{-}2$)---the fairest no-skill benchmark, since it is exactly what a
-base-rate forecaster could have said at the time.
-
-\begin{table}[H]
-\centering
-\begin{tabular}{lrrrrr}
-\toprule
-Model & Log loss & Brier & ROC-AUC & PR-AUC & ECE \\
-\midrule
-\multicolumn{6}{l}{\emph{Pooled out-of-sample, 2005--2024 ($n=82{,}970$, actual $P(\text{earn})=51.4\%$)}}\\
-\quad Model 0 (time-aware base rate) & 0.7010 & 0.2539 & --- & 0.481 & 0.053 \\
-\quad XGBoost, 15 features           & \textbf{0.6562} & \textbf{0.2314} & \textbf{0.666} & \textbf{0.676} & \textbf{0.045} \\
-\bottomrule
-\end{tabular}
-\caption{Pooled out-of-sample performance across twenty vintages. Lower is better for log loss,
-Brier, and ECE (expected calibration error); higher is better for the AUCs. Model~0 has no
-discrimination (its ``ranking'' is only the year-to-year drift in base rate), so its ROC-AUC is
-omitted. The model beats it on every proper metric.}
-\label{tab:model-results}
-\end{table}
-
-Figure~\ref{fig:vs-m0} makes the discrimination visual. Sorting all $82{,}970$ out-of-sample
-crashes into ten equal-size buckets by predicted probability, each bar is a bucket's
-\emph{actual} recovery rate. A model with no skill would leave every bar flat at the overall
-base rate (the red line, $51\%$); ours produces a clean monotone staircase that straddles it,
-from a $30\%$ recovery rate in the bottom decile to $79\%$ in the top. This is the central
-result: pooled over two decades of genuinely out-of-sample forecasts, the model's ordering of
-crashes by recovery probability holds.
+Unconditionally (Figure~\ref{fig:wk-base}), a crashed stock is up a week later $56.1\%$ of the time,
+with a median of $+2\%$---\emph{more} than a coin flip, and the opposite sign from the one-year base
+rate ($46.9\%$). At one week the typical crash bounces; over the following year it drifts back down.
+The two horizons are measuring different things: a short-term technical rebound versus durable
+recovery.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.62\textwidth]{figures/model_vs_m0.pdf}
-\caption{Model vs.\ Model~0, pooled out-of-sample (2005--2024). Bars: actual recovery rate per
-predicted-probability decile (lowest to highest). Red line: the realized pooled base rate
-($51\%$)---the no-skill reference the staircase straddles.}
-\label{fig:vs-m0}
+\includegraphics[width=0.72\textwidth]{figures/m0_return_hist_5d.pdf}
+\caption{Distribution of one-week ($5$-trading-day) total returns after a crash ($268{,}422$
+observed events). Tighter and more symmetric than the yearly distribution, and centered
+\emph{above} break-even: $56.1\%$ are up a week later, median $+2\%$. Returns beyond $\pm50\%$ are
+collected in the edge bins.}
+\label{fig:wk-base}
 \end{figure}
 
-\paragraph{The ranking sorts return, not just the odds.} Extending the deciles from ``how
-often'' to ``how much'' (Table~\ref{tab:decile-roi}), median and mean one-year return both
-climb monotonically with the predicted decile. The top decile earns money $79\%$ of the time
-with a $+60\%$ median return; the bottom decile $30\%$ of the time with a $-39\%$ median. But
-two cautions temper the levels. First, the pooled magnitudes are \emph{vintage-weighted}:
-the two largest crash years by count, 2008 and 2020, were both followed by violent rebounds, so
-the top-decile $+60\%$ median is inflated by them and is not a forward expectation---the
-per-vintage edge of Table~\ref{tab:vintages} is the trustworthy signal, not the pooled level.
-Second, even here the right-skew of the descriptive histograms persists: mean exceeds median in
-every decile, so ``high predicted recovery'' means the winners are large enough to lift the
-average, not that the typical pick is a sure thing.
+What is most striking is that several of the strongest \emph{one-year} signals \emph{reverse} at one
+week. Company size (Figure~\ref{fig:wk-mcap}) is the clearest case: micro-caps bounce most in a week
+($60.5\%$ up) yet recovered \emph{least} over a year, while mega-caps barely move either way.
+Repeat crashes (Figure~\ref{fig:wk-prior}) invert outright---stocks with two or more prior crashes
+bounce \emph{hardest} short-term ($58.2\%$ up, median $+3.4\%$), the very cohort that was the worst
+one-year bet ($20\%$ earn, median $-63\%$): the most oversold names snap back fastest and then
+resume falling. And crashing \emph{with} one's sector (Figure~\ref{fig:wk-relsec}), the clearest
+one-year recovery signal ($75\%$), is the \emph{worst} one-week bucket ($47.7\%$ up, below
+break-even)---systemic crashes do not bounce fast but heal durably, while idiosyncratic crashes
+bounce fast and stay broken. Crashing into an already-falling market (Figure~\ref{fig:wk-mkt})
+produces the biggest weekly rebound ($58.7\%$ up, median $+3.6\%$), and low-beta names
+(Figure~\ref{fig:wk-beta}) bounce more than high-beta ones---both oversold, contrarian effects.
 
-\begin{table}[H]
-\centering
-\begin{tabular}{rrrr}
-\toprule
-Decile & $P(\text{earn})$ & Median ROI & Mean ROI \\
-\midrule
-1 (lowest)  & 30\% & $-39\%$ & $-12\%$ \\
-2  & 36\% & $-25\%$ & $-5\%$ \\
-3  & 40\% & $-17\%$ & $+0\%$ \\
-4  & 43\% & $-10\%$ & $+5\%$ \\
-5  & 47\% & $-4\%$  & $+9\%$ \\
-6  & 52\% & $+2\%$  & $+16\%$ \\
-7  & 57\% & $+9\%$  & $+24\%$ \\
-8  & 64\% & $+23\%$ & $+39\%$ \\
-9  & 66\% & $+34\%$ & $+51\%$ \\
-10 (highest) & 79\% & $+60\%$ & $+76\%$ \\
-\bottomrule
-\end{tabular}
-\caption{Pooled out-of-sample recovery rate and one-year return by predicted-probability decile.
-All three columns rise monotonically. Levels are vintage-weighted (inflated by the 2008 and 2020
-rebound cohorts); read the ordering, not the magnitude.}
-\label{tab:decile-roi}
-\end{table}
+What does \emph{not} reverse is quality. Operating losses remain the worst bucket at both horizons
+(Figure~\ref{fig:wk-ebm}: unprofitable $49.2\%$ up, below break-even), and hyper-growth and prior
+hot performers stay weak (Figures~\ref{fig:wk-revg},~\ref{fig:wk-premom}); cheap and profitable
+firms lead at a week as they did at a year (Figure~\ref{fig:wk-pe}). Profitability and value help
+whether you hold for a week or a year.
 
-\paragraph{The probabilities are well calibrated.} Pooled over all vintages the model's
-expected calibration error is $0.045$ (Figure~\ref{fig:reliability}): a crash it rates at $p$
-recovers close to $p$ of the time across the range. The residual error is concentrated in
-novel-regime years the model could not foresee---in 2007 its top-decile picks recovered only
-$8\%$ of the time, because their outcomes ran straight into the 2008 crisis, and 2021's picks
-ran into the 2022 bear. Regime features let the model recognize environments it has seen; they
-cannot conjure a base rate for one it has not.
+The lesson mirrors the paper's founding hypothesis from the other side. The fast bounce is a
+mean-reversion of the most oversold, most idiosyncratically damaged names---a dead-cat bounce that is
+often strongest exactly where one-year recovery is weakest. Short-term bounce and long-term recovery
+are not the same signal; for several features they are nearly opposite.
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.58\textwidth]{figures/model_reliability.pdf}
-\caption{Reliability of the pooled walk-forward: predicted probability vs.\ realized recovery
-rate, in ten equal-width bins over all $82{,}970$ out-of-sample crashes. Points near the
-$45^\circ$ line are well calibrated.}
-\label{fig:reliability}
-\end{figure}
+\begin{figure}[H]\centering
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_mcap_micro_5d.pdf}\hfill
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_mcap_small_5d.pdf}\\[2pt]
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_mcap_midlarge_5d.pdf}\hfill
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_mcap_mega_5d.pdf}
+\caption{Market cap, one week. Micro-caps bounce most ($60.5\%$ up) and mega-caps least---the
+reverse of the one-year ordering.}
+\label{fig:wk-mcap}\end{figure}
 
-\paragraph{What the model leans on.} Figure~\ref{fig:importance} ranks the fifteen features of
-the final production model (trained on all labelled crashes) by gain. Market-regime features and
-beta take the top slots---trailing volatility, the 126- and 252-day market return, crash
-breadth---followed by the fundamentals (P/E, revenue growth, EBITDA margin); the crash's own
-depth and the stock's prior-crash count are near-noise. Regime state explains the large
-vintage-to-vintage swings; the fundamentals do the within-vintage sorting. This echoes the
-descriptive finding that \emph{context}---where the market and sector are---separates one-year
-recoveries more sharply than the mechanics of the individual drop.
+\begin{figure}[H]\centering
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_sev_10_15_5d.pdf}\hfill
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_sev_15_20_5d.pdf}\\[2pt]
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_sev_20_30_5d.pdf}\hfill
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_sev_30plus_5d.pdf}
+\caption{Crash severity, one week. Deeper crashes are slightly less likely to be up but carry bigger
+bounces (worse-than-30\% has the highest mean, $+3.3\%$).}
+\label{fig:wk-sev}\end{figure}
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.78\textwidth]{figures/model_importance.pdf}
-\caption{Feature importance (fraction of total gain) for the final production model. Market-regime
-features (green) dominate the top of the ranking; the per-stock fundamentals do the within-vintage
-sorting.}
-\label{fig:importance}
-\end{figure}
+\begin{figure}[H]\centering
+\includegraphics[width=0.32\textwidth]{figures/recovery_hist_prior_0_5d.pdf}\hfill
+\includegraphics[width=0.32\textwidth]{figures/recovery_hist_prior_1_5d.pdf}\hfill
+\includegraphics[width=0.32\textwidth]{figures/recovery_hist_prior_2plus_5d.pdf}
+\caption{Prior-crash count, one week---inverted from the one-year result: more prior crashes means a
+\emph{stronger} weekly bounce (fresh $55.0\%$, two-or-more $58.2\%$/median $+3.4\%$).}
+\label{fig:wk-prior}\end{figure}
 
-\section{Robustness: How Deep a Crash?}
-\label{sec:robustness}
+\begin{figure}[H]\centering
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_pe_unprofitable_5d.pdf}\hfill
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_pe_cheap_5d.pdf}\\[2pt]
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_pe_fair_5d.pdf}\hfill
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_pe_expensive_5d.pdf}
+\caption{Valuation (P/E), one week. Cheap firms lead ($59.3\%$ up) and unprofitable firms lag
+($50.8\%$)---the same direction as one year.}
+\label{fig:wk-pe}\end{figure}
 
-Everything so far defines a crash as a single-day drop of at least $10\%$. Does the result survive
-a stricter definition? A deeper crash is simply a $-10\%$ event with a more negative crash-day
-return, so we subset the events by depth and re-run the entire pooled walk-forward at thresholds of
-$-15\%$, $-20\%$, and $-30\%$---same features, same target, same 2005--2024 pooling
-(Table~\ref{tab:threshold}). (One caveat: path features such as the prior-crash count stay defined
-at the $-10\%$ threshold; only the event set deepens.)
+\begin{figure}[H]\centering
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_premom_dn_5d.pdf}\hfill
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_premom_mild_5d.pdf}\\[2pt]
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_premom_up_5d.pdf}\hfill
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_premom_hot_5d.pdf}
+\caption{Pre-crash momentum, one week. Prior hot performers bounce least ($52.1\%$ up), as at one
+year.}
+\label{fig:wk-premom}\end{figure}
 
-\begin{table}[H]
-\centering
-\begin{tabular}{lrrrrrrr}
-\toprule
-Crash & Events & Base & Base & ROC & ECE & Bottom-dec.\ & Top-dec.\ \\
-def.\ & & earn & median & AUC & & earn & earn / median \\
-\midrule
-$-10\%$ & 82{,}970 & 51\% & $+2\%$  & 0.666 & 0.045 & 30\% & 79\% / $+60\%$ \\
-$-15\%$ & 25{,}379 & 50\% & $-0\%$  & \textbf{0.700} & 0.037 & 25\% & 86\% / $+96\%$ \\
-$-20\%$ &  9{,}967 & 48\% & $-4\%$  & \textbf{0.703} & 0.055 & 22\% & 86\% / $+104\%$ \\
-$-30\%$ &  2{,}304 & 43\% & $-13\%$ & 0.660 & 0.071 & 20\% & 75\% / $+77\%$ \\
-\bottomrule
-\end{tabular}
-\caption{Pooled out-of-sample walk-forward at four crash-depth thresholds. As crashes deepen the
-\emph{average} outcome worsens (base earn and median fall) while the model's \emph{discrimination}
-sharpens (AUC rises, top-decile payoff grows), until sample size collapses at $-30\%$.}
-\label{tab:threshold}
-\end{table}
+\begin{figure}[H]\centering
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_beta_lo_5d.pdf}\hfill
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_beta_mkt_5d.pdf}\\[2pt]
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_beta_hi_5d.pdf}\hfill
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_beta_vhi_5d.pdf}
+\caption{Beta, one week. Low-beta names bounce most ($62.4\%$ up); the bounce falls monotonically
+with beta.}
+\label{fig:wk-beta}\end{figure}
 
-The table pulls in two directions at once, and the tension is the point.
+\begin{figure}[H]\centering
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_ebm_neg_5d.pdf}\hfill
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_ebm_lo_5d.pdf}\\[2pt]
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_ebm_mid_5d.pdf}\hfill
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_ebm_hi_5d.pdf}
+\caption{Profitability (EBITDA margin), one week. Operating losses are the worst bucket at both
+horizons ($49.2\%$ up, below break-even); margin helps monotonically.}
+\label{fig:wk-ebm}\end{figure}
 
-\paragraph{On average, deeper is worse.} The base recovery rate falls monotonically from $51\%$ at
-$-10\%$ to $43\%$ at $-30\%$, and the base median return drops from $+2\%$ to $-13\%$. A larger
-single-day drop carries more genuine damage, not a bigger reflexive bounce: the naive ``buy the
-biggest dips'' rule gets \emph{worse} the deeper it is applied.
+\begin{figure}[H]\centering
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_revg_dn_5d.pdf}\hfill
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_revg_lo_5d.pdf}\\[2pt]
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_revg_mid_5d.pdf}\hfill
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_revg_hi_5d.pdf}
+\caption{Revenue growth, one week. Hyper-growth ($>{30}\%$) bounces least ($52.6\%$ up); moderate
+growth leads.}
+\label{fig:wk-revg}\end{figure}
 
-\paragraph{But the model gets sharper, and the top decile pays far more.} Out-of-sample ROC-AUC
-rises from $0.666$ at $-10\%$ to $0.70$ at $-15$ and $-20\%$, and the top-decile median return
-roughly doubles, from $+60\%$ to $+104\%$. The bottom-to-top spread widens with it (at $-20\%$,
-$22\%$ vs.\ $86\%$ earn). Deeper crashes are a more \emph{bimodal} population---more terminal losers
-\emph{and} more violent overreaction-rebounds---so the average sinks while the top-decile payoff
-explodes, and the model separates the two best exactly where the stakes are highest. This is the
-temporary-overreaction-versus-fundamental-damage distinction the project set out to test, and it is
-sharpest precisely where crashes are deepest.
+\begin{figure}[H]\centering
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_mkt_crash_5d.pdf}\hfill
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_mkt_dn_5d.pdf}\\[2pt]
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_mkt_flat_5d.pdf}\hfill
+\includegraphics[width=0.49\textwidth]{figures/recovery_hist_mkt_up_5d.pdf}
+\caption{Market 20-day context, one week. Crashing into an already-falling market gives the biggest
+rebound ($58.7\%$ up, median $+3.6\%$)---an oversold, contrarian effect.}
+\label{fig:wk-mkt}\end{figure}
 
-\paragraph{Caveats.} Two. The $-30\%$ row rests on only $2{,}304$ pooled crashes; its lower AUC
-($0.66$) and higher ECE ($0.07$) are small-sample noise, not evidence of a real decline in signal.
-And as in Section~\ref{sec:model}, the absolute magnitudes are vintage-weighted---inflated by the
-2008 and 2020 rebound cohorts---so the trustworthy reading is the \emph{pattern} (deeper crashes are
-more separable and their top decile pays more), not the literal $+104\%$. The practical sweet spot
-is $-15\%$ to $-20\%$: the strongest discrimination, the largest top-decile payoff, and still enough
-events to trust.
-
-\paragraph{How the model performs, by depth.} Figures~\ref{fig:thr-10}--\ref{fig:thr-30} put the
-model's \emph{picks} in the Section~\ref{sec:m0} histogram: the one-year return distribution of its
-top-decile (highest predicted recovery) crashes, pooled out-of-sample across 2005--2024, at each
-crash depth. Following those picks, the distribution shifts hard to the right as the crash deepens.
-At $-10\%$ the median pick returns $+60\%$ and $79\%$ earn money; at $-20\%$ the median more than
-\emph{doubles} to $+104\%$ and $86\%$ earn. Deeper crashes give the model a more bimodal population
-to sort, and its best calls capture the fatter right tail---the picks pile up against the
-$\geq{+}200\%$ overflow bin. This is the payoff side of Table~\ref{tab:threshold}, made concrete: the
-edge is real and it is larger where crashes are deeper. Two cautions carry over: the levels are
-vintage-weighted (the 2008 and 2020 rebound cohorts inflate them, so read the direction, not the
-literal $+104\%$), and the $-30\%$ panel rests on only $231$ picks.
-
-\begin{figure}[H]\centering\includegraphics[width=0.66\textwidth]{figures/recovery_hist_thr_10.pdf}
-\caption{Model's top-decile picks, crash $\leq -10\%$ ($8{,}297$ picks). Median $+60\%$, mean $+76\%$;
-$79\%$ earn money.}
-\label{fig:thr-10}\end{figure}
-\begin{figure}[H]\centering\includegraphics[width=0.66\textwidth]{figures/recovery_hist_thr_15.pdf}
-\caption{Model's top-decile picks, crash $\leq -15\%$ ($2{,}538$ picks). Median $+96\%$, mean
-$+117\%$; $86\%$ earn money.}
-\label{fig:thr-15}\end{figure}
-\begin{figure}[H]\centering\includegraphics[width=0.66\textwidth]{figures/recovery_hist_thr_20.pdf}
-\caption{Model's top-decile picks, crash $\leq -20\%$ ($997$ picks). Median $+104\%$, mean $+123\%$;
-$86\%$ earn money.}
-\label{fig:thr-20}\end{figure}
-\begin{figure}[H]\centering\includegraphics[width=0.66\textwidth]{figures/recovery_hist_thr_30.pdf}
-\caption{Model's top-decile picks, crash $\leq -30\%$ ($231$ picks). Median $+79\%$, mean $+110\%$;
-$75\%$ earn money---the payoff is still large but the sample is thin.}
-\label{fig:thr-30}\end{figure}
+\begin{figure}[H]\centering
+\includegraphics[width=0.32\textwidth]{figures/recovery_hist_relsec_worse_5d.pdf}\hfill
+\includegraphics[width=0.32\textwidth]{figures/recovery_hist_relsec_mid_5d.pdf}\hfill
+\includegraphics[width=0.32\textwidth]{figures/recovery_hist_relsec_with_5d.pdf}
+\caption{Performance relative to sector, one week---inverted from one year: crashing \emph{with} the
+sector is the \emph{worst} weekly bucket ($47.7\%$ up, below break-even), whereas it was the best
+one-year signal. Fast bounce and durable recovery point opposite ways here.}
+\label{fig:wk-relsec}\end{figure}
 
 \end{document}
