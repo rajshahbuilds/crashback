@@ -755,4 +755,26 @@ more separable and their top decile pays more), not the literal $+104\%$. The pr
 is $-15\%$ to $-20\%$: the strongest discrimination, the largest top-decile payoff, and still enough
 events to trust.
 
+\paragraph{The distribution, by depth.} Figures~\ref{fig:thr-10}--\ref{fig:thr-30} show the same
+one-year return histogram as Section~\ref{sec:m0}, now for each crash definition over all history.
+The shift is instructive: as the crash deepens, the \emph{median} slides left ($-5\%$ at $-10\%$ to
+$-11\%$ at $-30\%$) while the \emph{mean} barely moves (it stays near $+11\%$). The distribution is
+not just sliding down---it is \emph{spreading}: more mass piles against total loss on the left, but
+the right tail of large rebounds fattens enough to hold the mean up. That widening gap between a
+falling median and a steady mean is the bimodality the walk-forward exploits, made visible.
+
+\begin{figure}[H]\centering\includegraphics[width=0.66\textwidth]{figures/recovery_hist_thr_10.pdf}
+\caption{Crash $\leq -10\%$ ($262{,}906$ events). Median $-5\%$, mean $+10\%$; $47\%$ earn money.}
+\label{fig:thr-10}\end{figure}
+\begin{figure}[H]\centering\includegraphics[width=0.66\textwidth]{figures/recovery_hist_thr_15.pdf}
+\caption{Crash $\leq -15\%$ ($68{,}509$ events). Median $-7\%$, mean $+11\%$; $46\%$ earn money.}
+\label{fig:thr-15}\end{figure}
+\begin{figure}[H]\centering\includegraphics[width=0.66\textwidth]{figures/recovery_hist_thr_20.pdf}
+\caption{Crash $\leq -20\%$ ($25{,}589$ events). Median $-8\%$, mean $+12\%$; $45\%$ earn money.}
+\label{fig:thr-20}\end{figure}
+\begin{figure}[H]\centering\includegraphics[width=0.66\textwidth]{figures/recovery_hist_thr_30.pdf}
+\caption{Crash $\leq -30\%$ ($5{,}569$ events). Median $-11\%$, mean $+10\%$; $43\%$ earn money---the
+median has fallen far while the mean holds, the right tail carrying it.}
+\label{fig:thr-30}\end{figure}
+
 \end{document}
