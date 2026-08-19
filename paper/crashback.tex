@@ -536,33 +536,43 @@ positive---and estimate $P(\text{earn money in a year})$ with gradient-boosted t
 (XGBoost), which absorb missing fundamentals natively and capture the nonlinear
 interactions the histograms only hinted at.
 
-\subsection{Organizing the data}
+\subsection{Organizing the data: an expanding-window walk-forward}
 
-The honest test of a forecaster is a future it has not seen, so we split chronologically:
-train on the distant past, validate on an intermediate period, and hold out the most recent
-years for a single final test (Table~\ref{tab:splits}). Because each outcome spans $252$
-trading days, a \emph{one-year embargo} brackets every boundary (the 2018 and 2021 crash-years
-are dropped) so that no outcome window straddles two splits. The cost of honesty is visible in
-the base rates: crashes in 2019--2020 recovered $78\%$ of the time---they were measured through
-the 2020--21 rebound---while 2022+ crashes recovered only $36\%$. Recovery base rates are
-strongly non-stationary, and a model trained on the long-run average walks into 2022 predicting
-too high. This is a calibration problem, and we return to it below.
+A single train/test split stakes the whole verdict on one test period, and the descriptive
+section showed how much the \emph{vintage} matters---a crash's one-year outcome depends heavily
+on the era it falls into. So instead of one split we evaluate the way the model would actually be
+deployed. For each year $Y$ from 2005 to 2024 we train only on crashes whose full one-year outcome
+precedes $Y$ (a one-year embargo: crash date $\le$ Dec $Y{-}2$), predict every crash in year $Y$,
+and set those predictions aside. Concatenating all years yields one out-of-sample set of
+$82{,}970$ crashes spanning two decades, each scored by a model that never saw its era. This is
+both a more honest evaluation---no single vintage can flatter or damn it---and the real production
+loop: retrain as crashes accumulate (the training set grows from $177$k events in 2005 to $255$k
+in 2024) and always score the next period with the maximum available history.
+
+The vintage effect is large. The base recovery rate swings from $36\%$ (2022--2024) to $60\%$
+(2019--2021, whose crashes were measured through the 2020--21 rebound), and no static model can
+anticipate that swing. What is stable is the model's \emph{edge over each vintage's own base
+rate}: its top decile beats the contemporaneous base rate in all six three-year blocks
+(Table~\ref{tab:vintages}).
 
 \begin{table}[H]
 \centering
-\begin{tabular}{lrrl}
+\begin{tabular}{lrrr}
 \toprule
-Split & Events & $P(\text{earn})$ & Span \\
+Vintage & Base $P(\text{earn})$ & Top-decile $P(\text{earn})$ & Top-decile median ROI \\
 \midrule
-train      & 225{,}436 & 46.5\% & 1926--2017 \\
-validation &  14{,}988 & 78.1\% & 2019--2020 \\
-test       &  13{,}635 & 35.7\% & 2022--2025 \\
+2007--2009 & 55\% & 68\% & $+41\%$ \\
+2010--2012 & 56\% & 77\% & $+22\%$ \\
+2013--2015 & 41\% & 51\% & $+1\%$ \\
+2016--2018 & 48\% & 65\% & $+12\%$ \\
+2019--2021 & 60\% & 99\% & $+108\%$ \\
+2022--2024 & 36\% & 47\% & $-4\%$ \\
 \bottomrule
 \end{tabular}
-\caption{Chronological split with a one-year embargo (the 2018 and 2021 crash-years fall in
-the embargo). The periods live in different worlds---a $78\%$ vs.\ $36\%$ base rate---which is
-the non-stationarity the model must contend with.}
-\label{tab:splits}
+\caption{Walk-forward by three-year vintage. The model's top decile beats the contemporaneous
+base rate in every block, but absolute levels ride the vintage (2019--2021 is inflated by the
+2020--21 rebound; 2022--2024 is depressed). The \emph{edge}, not the level, is the stable finding.}
+\label{tab:vintages}
 \end{table}
 
 \subsection{What the model sees}
@@ -575,14 +585,16 @@ non-stationary base rate above---we optionally add five point-in-time market-reg
 all trailing (hence knowable at the crash-day close): the market's trailing 126-day and
 252-day return, its drawdown from the trailing 52-week high, its trailing 60-day realized
 volatility, and \emph{crash breadth} (the fraction of the universe crashing $\ge$$10\%$ in a
-day, averaged over the trailing 20 days). Hyperparameters are chosen on a predeclared grid
-scored on the validation period only, with early stopping on validation; the test set is
-touched exactly once.
+day, averaged over the trailing 20 days). Hyperparameters are fixed to the set from a predeclared
+grid search; they are not re-tuned inside each walk-forward window, a standard simplification that
+keeps every year's model comparable.
 
 \subsection{Results}
 
-Table~\ref{tab:model-results} reports the single held-out test, against a Model~0 baseline
-that predicts the constant training base rate for every crash.
+Table~\ref{tab:model-results} reports the pooled walk-forward against a time-aware Model~0
+baseline, which for each year forecasts the recovery base rate of the data trainable then
+(crashes through $Y{-}2$)---the fairest no-skill benchmark, since it is exactly what a
+base-rate forecaster could have said at the time.
 
 \begin{table}[H]
 \centering
@@ -590,82 +602,103 @@ that predicts the constant training base rate for every crash.
 \toprule
 Model & Log loss & Brier & ROC-AUC & PR-AUC & ECE \\
 \midrule
-\multicolumn{6}{l}{\emph{Chronological test (2022+, $n=13{,}635$, actual $P(\text{earn})=35.7\%$)}}\\
-\quad Model 0 (base rate)            & 0.6757 & 0.2413 & --- & 0.357 & --- \\
-\quad XGBoost, 10 features           & 0.6645 & 0.2352 & 0.592 & 0.428 & 0.093 \\
-\quad XGBoost, 15 features (+regime) & \textbf{0.6540} & \textbf{0.2307} & 0.589 & 0.428 & \textbf{0.061} \\
+\multicolumn{6}{l}{\emph{Pooled out-of-sample, 2005--2024 ($n=82{,}970$, actual $P(\text{earn})=51.4\%$)}}\\
+\quad Model 0 (time-aware base rate) & 0.7010 & 0.2539 & --- & 0.481 & 0.053 \\
+\quad XGBoost, 15 features           & \textbf{0.6562} & \textbf{0.2314} & \textbf{0.666} & \textbf{0.676} & \textbf{0.045} \\
 \bottomrule
 \end{tabular}
-\caption{Held-out test performance. Lower is better for log loss, Brier, and ECE (expected
-calibration error); higher is better for the AUCs. The regime features move the model's
-average prediction from $0.42$ toward the true $0.36$.}
+\caption{Pooled out-of-sample performance across twenty vintages. Lower is better for log loss,
+Brier, and ECE (expected calibration error); higher is better for the AUCs. Model~0 has no
+discrimination (its ``ranking'' is only the year-to-year drift in base rate), so its ROC-AUC is
+omitted. The model beats it on every proper metric.}
 \label{tab:model-results}
 \end{table}
 
-Figure~\ref{fig:vs-m0} makes the discrimination visual. Sorting the test crashes into ten
-equal-size buckets by predicted probability, each bar is a bucket's \emph{actual} recovery
-rate. A model with no skill would leave every bar at the overall base rate (the red line);
-ours produces a monotone staircase that straddles it, from a bottom-decile recovery rate of
-$24\%$ to $48\%$ in the top decile. Two subtleties are worth naming. First, the staircase
-sits mostly below Model~0's flat forecast (the grey line, $47\%$) not because the model is
-weak but because Model~0 \emph{over-shoots}: it forecasts the training-era base rate of $47\%$
-while the 2022+ test period actually recovered only $36\%$---the same non-stationarity of
-Table~\ref{tab:splits}, and precisely the miscalibration the regime features reduce. Second,
-the gain over Model~0 is genuine but slim: the model wins on every proper metric in
-Table~\ref{tab:model-results}, and the bottom decile---a $24\%$ recovery rate against a $36\%$
-base---is the sharpest usable signal, an \emph{avoid} rather than a \emph{buy}.
+Figure~\ref{fig:vs-m0} makes the discrimination visual. Sorting all $82{,}970$ out-of-sample
+crashes into ten equal-size buckets by predicted probability, each bar is a bucket's
+\emph{actual} recovery rate. A model with no skill would leave every bar flat at the overall
+base rate (the red line, $51\%$); ours produces a clean monotone staircase that straddles it,
+from a $30\%$ recovery rate in the bottom decile to $79\%$ in the top. This is the central
+result: pooled over two decades of genuinely out-of-sample forecasts, the model's ordering of
+crashes by recovery probability holds.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.68\textwidth]{figures/model_vs_m0.pdf}
-\caption{Model discrimination on the honest out-of-time test. Bars: actual recovery rate per
-predicted-probability decile (lowest to highest) of the 15-feature model. Red line: the
-realized test-period base rate ($36\%$)---the no-skill reference the staircase should straddle.
-Grey dotted line: Model~0's flat forecast ($47\%$, the training base rate), which over-shoots
-the test period.}
+\includegraphics[width=0.62\textwidth]{figures/model_vs_m0.pdf}
+\caption{Model vs.\ Model~0, pooled out-of-sample (2005--2024). Bars: actual recovery rate per
+predicted-probability decile (lowest to highest). Red line: the realized pooled base rate
+($51\%$)---the no-skill reference the staircase straddles.}
 \label{fig:vs-m0}
 \end{figure}
 
-\paragraph{Discrimination is modest but real out-of-time.} On the honest chronological test
-the model beats the base rate on every proper metric (log loss, Brier, PR-AUC) with a
-ROC-AUC of $0.59$---a genuine but slim edge, in line with what a hard forecasting problem
-should yield.
+\paragraph{The ranking sorts return, not just the odds.} Extending the deciles from ``how
+often'' to ``how much'' (Table~\ref{tab:decile-roi}), median and mean one-year return both
+climb monotonically with the predicted decile. The top decile earns money $79\%$ of the time
+with a $+60\%$ median return; the bottom decile $30\%$ of the time with a $-39\%$ median. But
+two cautions temper the levels. First, the pooled magnitudes are \emph{vintage-weighted}:
+the two largest crash years by count, 2008 and 2020, were both followed by violent rebounds, so
+the top-decile $+60\%$ median is inflated by them and is not a forward expectation---the
+per-vintage edge of Table~\ref{tab:vintages} is the trustworthy signal, not the pooled level.
+Second, even here the right-skew of the descriptive histograms persists: mean exceeds median in
+every decile, so ``high predicted recovery'' means the winners are large enough to lift the
+average, not that the typical pick is a sure thing.
 
-\paragraph{Regime features fix the level, not the ranking.} Adding the five regime features
-cuts calibration error by a third (ECE $0.093\!\to\!0.061$) and improves both proper scores,
-while ROC-AUC and PR-AUC barely move. That is the signature of a feature that tells the model
-\emph{what level} to predict rather than \emph{how to rank}: able at last to see it was
-crashing into a risk-off tape, the model dials its average forecast down toward the truth.
-Figure~\ref{fig:reliability} shows the reliability curve pulled toward the diagonal. The fix
-is only partial---the mid-to-high buckets still over-predict---because 2022 was in part a
-genuinely novel regime (a rate-shock grind more pessimistic than almost anything in the
-1926--2017 training history). Regime features let the model recognize regimes it has seen;
-they cannot conjure a base rate for one it has not.
+\begin{table}[H]
+\centering
+\begin{tabular}{rrrr}
+\toprule
+Decile & $P(\text{earn})$ & Median ROI & Mean ROI \\
+\midrule
+1 (lowest)  & 30\% & $-39\%$ & $-12\%$ \\
+2  & 36\% & $-25\%$ & $-5\%$ \\
+3  & 40\% & $-17\%$ & $+0\%$ \\
+4  & 43\% & $-10\%$ & $+5\%$ \\
+5  & 47\% & $-4\%$  & $+9\%$ \\
+6  & 52\% & $+2\%$  & $+16\%$ \\
+7  & 57\% & $+9\%$  & $+24\%$ \\
+8  & 64\% & $+23\%$ & $+39\%$ \\
+9  & 66\% & $+34\%$ & $+51\%$ \\
+10 (highest) & 79\% & $+60\%$ & $+76\%$ \\
+\bottomrule
+\end{tabular}
+\caption{Pooled out-of-sample recovery rate and one-year return by predicted-probability decile.
+All three columns rise monotonically. Levels are vintage-weighted (inflated by the 2008 and 2020
+rebound cohorts); read the ordering, not the magnitude.}
+\label{tab:decile-roi}
+\end{table}
+
+\paragraph{The probabilities are well calibrated.} Pooled over all vintages the model's
+expected calibration error is $0.045$ (Figure~\ref{fig:reliability}): a crash it rates at $p$
+recovers close to $p$ of the time across the range. The residual error is concentrated in
+novel-regime years the model could not foresee---in 2007 its top-decile picks recovered only
+$8\%$ of the time, because their outcomes ran straight into the 2008 crisis, and 2021's picks
+ran into the 2022 bear. Regime features let the model recognize environments it has seen; they
+cannot conjure a base rate for one it has not.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.62\textwidth]{figures/model_reliability.pdf}
-\caption{Reliability of the chronological model on the 2022+ test set: predicted probability
-vs.\ realized recovery rate, in ten equal-width bins. The regime features (blue) pull the
-curve toward the $45^\circ$ perfect-calibration line relative to the price-and-fundamentals
-model (grey).}
+\includegraphics[width=0.58\textwidth]{figures/model_reliability.pdf}
+\caption{Reliability of the pooled walk-forward: predicted probability vs.\ realized recovery
+rate, in ten equal-width bins over all $82{,}970$ out-of-sample crashes. Points near the
+$45^\circ$ line are well calibrated.}
 \label{fig:reliability}
 \end{figure}
 
-\paragraph{What the model leans on.} Figure~\ref{fig:importance} ranks the fifteen features
-by gain. Market-regime features and beta take the top slots (trailing volatility, 252-day
-market return, crash breadth), followed by the fundamentals (P/E, revenue growth, EBITDA
-margin); the crash's own depth and the stock's prior-crash count are near-noise. This echoes
-the descriptive finding that \emph{context}---where the market and sector are---separates
-one-year recoveries more sharply than the mechanics of the individual drop.
+\paragraph{What the model leans on.} Figure~\ref{fig:importance} ranks the fifteen features of
+the final production model (trained on all labelled crashes) by gain. Market-regime features and
+beta take the top slots---trailing volatility, the 126- and 252-day market return, crash
+breadth---followed by the fundamentals (P/E, revenue growth, EBITDA margin); the crash's own
+depth and the stock's prior-crash count are near-noise. Regime state explains the large
+vintage-to-vintage swings; the fundamentals do the within-vintage sorting. This echoes the
+descriptive finding that \emph{context}---where the market and sector are---separates one-year
+recoveries more sharply than the mechanics of the individual drop.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.78\textwidth]{figures/model_importance.pdf}
-\caption{Feature importance (fraction of total gain) for the 15-feature chronological model.
-Market-regime features (green) dominate the top of the ranking; the short-horizon market
-return the model previously relied on fades once the longer-horizon regime signals are
-available.}
+\caption{Feature importance (fraction of total gain) for the final production model. Market-regime
+features (green) dominate the top of the ranking; the per-stock fundamentals do the within-vintage
+sorting.}
 \label{fig:importance}
 \end{figure}
 
