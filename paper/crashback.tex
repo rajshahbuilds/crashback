@@ -167,6 +167,37 @@ illustrating how strongly the base rate depends on the market regime.}
 \label{fig:m0-2010}
 \end{figure}
 
+The opposite extreme is the recent regime. Restricting instead to crashes from $2022$
+onward (Figure~\ref{fig:m0-2022}, $13{,}635$ one-year outcomes) shifts the distribution
+hard the \emph{other} way: only $35.7\%$ earn money, the median falls to $-21.7\%$, and
+the mean turns negative ($-6.7\%$)---a rate-shock regime in which recoveries were both
+rarer and smaller than the full-history average, let alone the 2010s bull. The shorter
+$60$-day window is similarly depressed (Figure~\ref{fig:m0-2022-60d}: $42.4\%$ earn,
+median $-6.2\%$). Between the post-2010 bull (median near zero, mean $+21\%$) and the
+2022--onward grind (median $-21.7\%$), the unconditional base rate spans an enormous
+range. Model~0 is therefore not a single number but a regime-dependent band, which is
+why the predictive model of Section~\ref{sec:model} is trained and tested \emph{across}
+these regimes with a walk-forward rather than evaluated on any one of them.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/m0_return_hist_2022.pdf}
+\caption{One-year total returns after a crash, restricted to crashes from $2022$ onward
+($13{,}635$ observed events). The mirror image of the post-2010 sample: the median falls
+to $-21.7\%$ and the mean to $-6.7\%$, with only $35.7\%$ earning money---the hostile end
+of the regime band.}
+\label{fig:m0-2022}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/m0_return_hist_60d_2022.pdf}
+\caption{$60$-trading-day total returns after a crash, crashes from $2022$ onward
+($17{,}842$ observed events). Also depressed relative to the full history---$42.4\%$ earn
+money, median $-6.2\%$.}
+\label{fig:m0-2022-60d}
+\end{figure}
+
 \section{Which Features Correlate with Recovery?}
 
 Before building predictive models, we screen individual features for a univariate
