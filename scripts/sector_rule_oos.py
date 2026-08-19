@@ -39,7 +39,7 @@ def main():
     t = r.test.join(df.select('event_id', 'ret', 'rel_sector'), on='event_id')
     p = t['p'].to_numpy()
     top = np.argsort(p)[-len(p) // 10:]
-    print(f"\n=== model top decile (2022+) ===")
+    print("\n=== model top decile (2022+) ===")
     print(f"top decile       : {stats(t['ret'].to_numpy()[top])}")
 
     # overlap: how much of the top decile is itself 'crashed with sector'?
