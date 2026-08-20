@@ -22,12 +22,6 @@ dependencies = [
     # config / validation
     "pydantic>=2.0",
     "pyyaml>=6.0",
-    # modeling
-    "scikit-learn>=1.4",
-    "lightgbm>=4.0",
-    "xgboost>=2.0",
-    # V2 crash-cause extraction (LLM)
-    "anthropic>=0.40",
     # figures for the writeup
     "matplotlib>=3.7",
     # data provider (WRDS: CRSP + Compustat)

@@ -50,36 +50,6 @@ def event_beta(cfg, window: int = 252, min_samples: int = 120) -> pl.DataFrame:
                     how="left").select("event_id", "beta"))
 
 
-def market_regime(cfg) -> pl.DataFrame:
-    """Point-in-time market-regime features, one row per trading date (join by crash_date).
-
-    All trailing/inclusive of the date, so knowable at the crash-day close: equal-weighted market
-    trailing return (126d, 252d), drawdown from the trailing 252-day index high, trailing 60-day
-    realized volatility (annualized), and crash breadth (trailing-20d mean fraction of the universe
-    down >=10% in a day). Returns (date, mkt_ret_126d, mkt_ret_252d, mkt_drawdown_252d,
-    mkt_vol_60d, crash_breadth_20d).
-    """
-    norm = cfg.paths.resolve("data_normalized")
-    daily = (scan_daily_prices(norm / "daily_prices").select("date", "daily_return")
-             .group_by("date").agg(
-                 mret=pl.col("daily_return").mean(),
-                 n=pl.len(),
-                 ncrash=(pl.col("daily_return") <= -0.10).sum())
-             .sort("date").collect())
-    idx = (pl.col("mret").fill_null(0.0) + 1.0).log().cum_sum().exp()
-    d = daily.with_columns(level=idx).with_columns(
-        mkt_ret_126d=pl.col("level") / pl.col("level").shift(126) - 1.0,
-        mkt_ret_252d=pl.col("level") / pl.col("level").shift(252) - 1.0,
-        mkt_drawdown_252d=pl.col("level")
-        / pl.col("level").rolling_max(window_size=252, min_samples=60) - 1.0,
-        mkt_vol_60d=pl.col("mret").rolling_std(window_size=60, min_samples=20)
-        * (252.0 ** 0.5),
-        crash_breadth_20d=(pl.col("ncrash") / pl.col("n"))
-        .rolling_mean(window_size=20, min_samples=5))
-    return d.select("date", "mkt_ret_126d", "mkt_ret_252d", "mkt_drawdown_252d",
-                    "mkt_vol_60d", "crash_breadth_20d")
-
-
 def event_ebitda_margin(cfg) -> pl.DataFrame:
     """Per-event trailing-twelve-month EBITDA margin (EBITDA_ttm / revenue_ttm), point-in-time.
 
